@@ -3,7 +3,7 @@ type mdim = usize;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Matrix<T>
-    where T: Eq + Clone
+    where T: Clone + PartialEq
 {
     width: mdim,
     height: mdim,
@@ -11,7 +11,7 @@ pub struct Matrix<T>
 }
 
 impl<T> Matrix<T>
-    where T: Eq + Clone
+    where T: Clone + PartialEq
 {
     pub fn new(val: T, width: mdim, height: mdim) -> Matrix<T> {
         Matrix {
