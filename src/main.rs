@@ -24,5 +24,8 @@ fn main() {
     // let mut e = Matrix::new(TestNumber{}, 2, 2);
     // println!("{}", d == e);
 
-
+    a[0][0] = 1.;
+    a[2][0] = 2.;
+    a[0][1] = 3.;
+    println!("{}", a);
 }

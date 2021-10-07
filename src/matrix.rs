@@ -1,4 +1,5 @@
 use std::ops::{Index, IndexMut};
+use std::fmt::{Display, Formatter, Write};
 
 type mdim = usize;
 
@@ -22,11 +23,11 @@ impl<T> Matrix<T>
         }
     }
 
-    pub fn columns(&self) -> mdim {
+    pub fn column_count(&self) -> mdim {
         self.columns
     }
 
-    pub fn rows(&self) -> mdim {
+    pub fn row_count(&self) -> mdim {
         self.rows
     }
 }
@@ -47,6 +48,24 @@ impl<T> IndexMut<mdim> for Matrix<T>
 
     fn index_mut(&mut self, row_index: mdim) -> &mut [T] {
         &mut self.elements[row_index * self.columns..(row_index + 1) * self.columns]
+    }
+}
+
+impl<T> Display for Matrix<T>
+    where T: Clone + PartialEq + Display
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for row in 0..self.row_count() {
+            f.write_str("|");
+            for col in 0..self.column_count() {
+                write!(f, "{}", self[row][col])?;
+                if col != self.column_count() - 1 {
+                    f.write_str(" ");
+                }
+            }
+            f.write_str("|\n");
+        }
+        std::fmt::Result::Ok(())
     }
 }
 
