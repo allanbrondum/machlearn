@@ -1,6 +1,7 @@
 use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAssign};
 use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
+use std::iter::Sum;
 
 type mdim = usize;
 
@@ -186,23 +187,22 @@ impl<T> SubAssign for Matrix<T>
 }
 
 impl<T> Mul for Matrix<T>
-    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T>
+    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
 {
     type Output = Self;
 
-    fn mul(mut self, rhs: Self) -> Self {
+    fn mul(self, rhs: Self) -> Self {
         if (self.column_count() != rhs.row_count()) {
             panic!("Cannot multiply matrices because of dimensions");
         }
-        let join_count = self.column_count();
         let row_count = self.row_count();
         let col_count = rhs.column_count();
-        let result = Matrix::<T>::new(row_count, col_count);
+        let mut result = Matrix::<T>::new(row_count, col_count);
         for row in 0..row_count {
             for col in 0..col_count {
-                for i in 0..join_count {
-
-                }
+                result[row][col] = self.row_iter(row).zip(rhs.col_iter(col))
+                    .map(|pair| *pair.0 * *pair.1)
+                    .sum();
             }
         }
         result
@@ -399,6 +399,31 @@ mod tests {
         assert_eq!(Some(&0.), col_iter.next());
         assert_eq!(None, col_iter.next());
         assert_eq!(None, col_iter.next());
+    }
+
+    #[test]
+    fn multiply() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        let mut b = Matrix::new( 4, 2);
+        b[0][0] = 1;
+        b[0][1] = 2;
+        b[1][0] = 3;
+        b[1][1] = 4;
+
+        println!("{} {}", a, b);
+
+        let mut product = Matrix::new( 3, 2);
+        product[0][0] = 7;
+        product[0][1] = 10;
+        product[1][0] = 15;
+        product[1][1] = 22;
+
+        assert_eq!(product, a * b);
     }
 
 
