@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
 use std::iter::Sum;
 
-type mdim = usize;
+pub(crate) type mdim = usize;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Matrix<T>

@@ -4,7 +4,7 @@ use std::slice::Iter;
 use std::iter::Sum;
 use itertools::Itertools;
 
-type vdim = usize;
+pub type vdim = usize;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Vector<T>
