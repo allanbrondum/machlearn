@@ -103,7 +103,7 @@ impl<T> Display for Matrix<T>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for row in 0..self.row_count() {
-        f.write_str("|")?;
+            f.write_str("|")?;
             for col in 0..self.column_count() {
                 write!(f, "{}", self[row][col])?;
                 if col != self.column_count() - 1 {
