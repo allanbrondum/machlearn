@@ -1,3 +1,5 @@
+//! Matrix type and arithmetic operations on the Matrix.
+
 use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAssign};
 use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
@@ -5,6 +7,7 @@ use std::iter::Sum;
 
 pub(crate) type mdim = usize;
 
+/// Matrix with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Matrix<T>
     where T: Clone + PartialEq

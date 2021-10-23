@@ -1,3 +1,5 @@
+//! Vector type and arithmetic operations on the Vector.
+
 use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAssign};
 use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
@@ -6,6 +8,7 @@ use itertools::Itertools;
 
 pub type vdim = usize;
 
+/// Vector with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Vector<T>
     where T: Clone + PartialEq

@@ -1,3 +1,5 @@
+//! Simple multiplayer neural network using backpropagation for learning.
+
 use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAssign};
 use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
@@ -21,42 +23,42 @@ pub struct Network
     weights: Vec<Matrix<ampl>>
 }
 
-struct TwoLayers<'a> {
+struct NeighbourLayers<'a> {
     layer1: &'a mut Layer,
     layer2: &'a mut Layer,
     weights: &'a mut Matrix<ampl>
 }
 
-struct TwoLayersIter<'a>
+struct NeighbourLayersIter<'a>
 {
-    matrix: &'a mut Lay
-    column: mdim,
-    row: mdim
+    network: &'a mut Network,
+    index: usize
 }
 
-impl<T> ColIter<'_, T>
-    where T: Clone + PartialEq
+impl NeighbourLayersIter<'_>
 {
-    fn new(matrix: &Matrix<T>, column: mdim) -> ColIter<T> {
-        ColIter {
-            matrix,
-            column,
-            row: 0
+    fn new(network: &mut Network) -> NeighbourLayersIter {
+        NeighbourLayersIter {
+            network,
+            index: 0
         }
     }
 }
 
-impl<'a, T> Iterator for ColIter<'a, T>
-    where T: Clone + PartialEq
+impl<'a> Iterator for NeighbourLayersIter<'a>
 {
-    type Item = &'a T;
+    type Item = NeighbourLayers<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if (self.row == self.matrix.rows) {
+        if self.index == self.network.layers.len() - 1 {
             None
         } else {
-            let val = &self.matrix.elements[self.row * self.matrix.columns + self.column];
-            self.row += 1;
+            let val = NeighbourLayers{
+                layer1: &mut self.network.layers[self.index],
+                layer2: &mut self.network.layers[self.index + 1],
+                weights: &mut self.network.weights[self.index]
+            };
+            self.index += 1;
             Some(val)
         }
     }
@@ -64,12 +66,12 @@ impl<'a, T> Iterator for ColIter<'a, T>
 
 impl Network {
 
-    fn two_layers(&mut self) -> impl Iterator<Item = &TwoLayers> {
-
+    fn neighbour_layers_iter(&mut self) -> impl Iterator<Item = NeighbourLayers> {
+        NeighbourLayersIter::new(self)
     }
 
-    pub fn evaluate_input_state(&mut self, p0: Vec<ampl>) -> Vec<ampl> {
-
+    pub fn evaluate_input_state(&mut self, input: Vector<ampl>) -> Vector<ampl> {
+        Vector::new(0)
     }
 }
 
