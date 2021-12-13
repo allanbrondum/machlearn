@@ -23,56 +23,14 @@ pub struct Network
     weights: Vec<Matrix<ampl>>
 }
 
-struct NeighbourLayers<'a> {
-    layer1: &'a mut Layer,
-    layer2: &'a mut Layer,
-    weights: &'a mut Matrix<ampl>
-}
-
-struct NeighbourLayersIter<'a>
-{
-    network: &'a mut Network,
-    index: usize
-}
-
-impl NeighbourLayersIter<'_>
-{
-    fn new(network: &mut Network) -> NeighbourLayersIter {
-        NeighbourLayersIter {
-            network,
-            index: 0
-        }
-    }
-}
-
-impl<'a> Iterator for NeighbourLayersIter<'a>
-{
-    type Item = NeighbourLayers<'a>;
-
-    fn next(&'a mut self) -> Option<Self::Item> {
-        if self.index == self.network.layers.len() - 1 {
-            None
-        } else {
-            None
-            // let val = NeighbourLayers{
-            //     layer1: &mut self.network.layers[self.index],
-            //     layer2: &mut self.network.layers[self.index + 1],
-            //     weights: &mut self.network.weights[self.index]
-            // };
-            // self.index += 1;
-            // Some(val)
-        }
-    }
-}
-
 impl Network {
 
-    fn neighbour_layers_iter(&mut self) -> impl Iterator<Item = NeighbourLayers> {
-        NeighbourLayersIter::new(self)
-    }
-
-    pub fn evaluate_input_state(&mut self, input: Vector<ampl>) -> Vector<ampl> {
-        Vector::new(0)
+    pub fn evaluate_input_state(&mut self, input: Vector<ampl>) -> & Vector<ampl> {
+        self.layers[0].stateVector = input;
+        for i in 0..self.layers.len() - 1 {
+            // self.layers[i + 1].stateVector = self.weights[i] * self.layers[i].stateVector;
+        }
+        &self.layers.last().unwrap().stateVector
     }
 }
 
@@ -80,7 +38,7 @@ impl Network {
     pub fn new(dimensions: Vec<usize>) -> Self {
         let mut layers = Vec::new();
         let mut weights = Vec::new();
-        for dim in dimensions.iter() {
+        for dim in &dimensions {
             layers.push(Layer{stateVector: Vector::new(*dim)});
         }
         for i in 0..dimensions.len() - 1 {

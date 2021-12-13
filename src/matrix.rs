@@ -4,8 +4,9 @@ use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAss
 use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
 use std::iter::Sum;
+use crate::vector::Vector;
 
-pub(crate) type mdim = usize;
+pub type mdim = usize;
 
 /// Matrix with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -195,7 +196,7 @@ impl<T> Mul for Matrix<T>
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
-        if (self.column_count() != rhs.row_count()) {
+        if self.column_count() != rhs.row_count() {
             panic!("Cannot multiply matrices because of dimensions");
         }
         let row_count = self.row_count();
@@ -207,6 +208,25 @@ impl<T> Mul for Matrix<T>
                     .map(|pair| *pair.0 * *pair.1)
                     .sum();
             }
+        }
+        result
+    }
+}
+
+impl<T> Mul<Vector<T>> for Matrix<T>
+    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
+{
+    type Output = Vector<T>;
+
+    fn mul(self, rhs: Vector<T>) -> Vector<T> {
+        if self.column_count() != rhs.len() {
+            panic!("Cannot multiply matrix with vector because of dimensions");
+        }
+        let mut result = Vector::<T>::new(self.row_count());
+        for row in 0..self.row_count() {
+            result[row] = self.row_iter(row).zip(rhs.iter())
+                .map(|pair| *pair.0 * *pair.1)
+                .sum();
         }
         result
     }
@@ -429,5 +449,26 @@ mod tests {
         assert_eq!(product, a * b);
     }
 
+    #[test]
+    fn multiply_vector() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        let mut b = Vector::new( 4);
+        b[0] = 1;
+        b[1] = 2;
+
+        println!("{} {}", a, b);
+
+        let mut product = Vector::new(3);
+        product[0] = 5;
+        product[1] = 11;
+        product[2] = 0;
+
+        assert_eq!(product, a * b);
+    }
 
 }
