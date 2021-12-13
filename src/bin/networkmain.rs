@@ -10,23 +10,23 @@ fn main() {
 
     println!("network: {}", network);
 
-    let weights1 = network.weights(0);
-
+    let mut weights1 = Matrix::new(6, 8);
     weights1[0][0] = 1.;
     weights1[1][1] = 1.;
     weights1[2][2] = 1.;
     weights1[3][3] = 1.;
     weights1[4][4] = 1.;
     weights1[5][5] = 1.;
+    network.set_weights(0, weights1);
 
-    let weights2 = network.weights(1);
-
+    let mut weights2 = Matrix::new(8, 6);
     weights2[0][0] = 1.;
     weights2[1][1] = 1.;
     weights2[2][2] = 1.;
     weights2[3][3] = 1.;
     weights2[4][4] = 1.;
     weights2[5][5] = 1.;
+    network.set_weights(1, weights2);
 
     println!("network: {}", network);
 

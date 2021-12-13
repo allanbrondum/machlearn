@@ -53,8 +53,15 @@ impl Network {
         }
     }
 
-    pub fn weights(&mut self, index: usize) -> &mut Matrix<ampl> {
-        &mut self.weights[index]
+    pub fn get_weights(&self, index: usize) -> &Matrix<ampl> {
+        &self.weights[index]
+    }
+
+    pub fn set_weights(&mut self, index: usize, weights: Matrix<ampl>) {
+        if self.weights[index].dimensions() != weights.dimensions() {
+            panic!("Dimensions of weights {} not as required by network {}", weights.dimensions(), self.weights[index].dimensions());
+        }
+        self.weights[index] = weights;
     }
 }
 
@@ -69,7 +76,7 @@ impl Display for Network
 
         f.write_str("Weight dimensions:\n");
         for weight in &self.weights {
-            write!(f, "{}x{}\n", weight.row_count(), weight.column_count())?;
+            write!(f, "{}\n", weight.dimensions())?;
         }
 
         std::fmt::Result::Ok(())

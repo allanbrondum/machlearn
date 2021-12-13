@@ -19,13 +19,16 @@ pub struct Vector<T>
 impl<T> Vector<T>
     where T: Clone + PartialEq + Default
 {
-
     pub fn new(len: vdim) -> Vector<T> {
         Vector {
             elements: vec![Default::default(); len]
         }
     }
+}
 
+impl<T> Vector<T>
+    where T: Clone + PartialEq
+{
     pub fn len(&self) -> vdim {
         self.elements.len()
     }
@@ -36,7 +39,7 @@ impl<T> Vector<T>
 }
 
 impl<T> Index<vdim> for Vector<T>
-    where T: Clone + PartialEq + Default
+    where T: Clone + PartialEq
 {
     type Output = T;
 
@@ -46,7 +49,7 @@ impl<T> Index<vdim> for Vector<T>
 }
 
 impl<T> IndexMut<vdim> for Vector<T>
-    where T: Clone + PartialEq + Default
+    where T: Clone + PartialEq
 {
 
     fn index_mut(&mut self, index: vdim) -> &mut T {
@@ -55,7 +58,7 @@ impl<T> IndexMut<vdim> for Vector<T>
 }
 
 impl<T> Display for Vector<T>
-    where T: Clone + PartialEq + Default + Display
+    where T: Clone + PartialEq + Display
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str("[")?;
@@ -66,7 +69,7 @@ impl<T> Display for Vector<T>
 }
 
 impl<T> Neg for Vector<T>
-    where T: Copy + PartialEq + Default + Neg<Output = T>
+    where T: Copy + PartialEq + Neg<Output = T>
 {
     type Output = Vector<T>;
 
@@ -79,7 +82,7 @@ impl<T> Neg for Vector<T>
 }
 
 impl<T> Add for Vector<T>
-    where T: Copy + PartialEq + Default + AddAssign
+    where T: Copy + PartialEq + AddAssign
 {
     type Output = Self;
 
@@ -90,7 +93,7 @@ impl<T> Add for Vector<T>
 }
 
 impl<T> AddAssign for Vector<T>
-    where T: Copy + PartialEq + Default + AddAssign
+    where T: Copy + PartialEq + AddAssign
 {
     fn add_assign(&mut self, other: Self) {
         for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
@@ -100,7 +103,7 @@ impl<T> AddAssign for Vector<T>
 }
 
 impl<T> Sub for Vector<T>
-    where T: Copy + PartialEq + Default + SubAssign
+    where T: Copy + PartialEq + SubAssign
 {
     type Output = Self;
 
@@ -111,7 +114,7 @@ impl<T> Sub for Vector<T>
 }
 
 impl<T> SubAssign for Vector<T>
-    where T: Copy + PartialEq + Default + SubAssign
+    where T: Copy + PartialEq + SubAssign
 {
     fn sub_assign(&mut self, other: Self) {
         for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {

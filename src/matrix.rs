@@ -13,9 +13,14 @@ pub type mdim = usize;
 pub struct Matrix<T>
     where T: Clone + PartialEq
 {
-    rows: mdim,
-    columns: mdim,
+    dimensions: MatrixDimensions,
     elements: Vec<T>
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct MatrixDimensions {
+    rows: mdim,
+    columns: mdim
 }
 
 struct ColIter<'a, T>
@@ -44,10 +49,10 @@ impl<'a, T> Iterator for ColIter<'a, T>
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if (self.row == self.matrix.rows) {
+        if self.row == self.matrix.row_count() {
             None
         } else {
-            let val = &self.matrix.elements[self.row * self.matrix.columns + self.column];
+            let val = &self.matrix.elements[self.row * self.matrix.column_count() + self.column];
             self.row += 1;
             Some(val)
         }
@@ -57,21 +62,27 @@ impl<'a, T> Iterator for ColIter<'a, T>
 impl<T> Matrix<T>
     where T: Clone + PartialEq + Default
 {
-
     pub fn new(rows: mdim, columns: mdim) -> Matrix<T> {
         Matrix {
-            rows,
-            columns,
+            dimensions: MatrixDimensions { rows, columns },
             elements: vec![Default::default(); rows * columns]
         }
     }
+}
 
+impl<T> Matrix<T>
+    where T: Clone + PartialEq
+{
     pub fn column_count(&self) -> mdim {
-        self.columns
+        self.dimensions.columns
     }
 
     pub fn row_count(&self) -> mdim {
-        self.rows
+        self.dimensions.rows
+    }
+
+    pub fn dimensions(&self) -> MatrixDimensions {
+        self.dimensions
     }
 
     pub fn row_iter(&self, row: mdim) -> impl Iterator<Item = &T> {
@@ -84,26 +95,26 @@ impl<T> Matrix<T>
 }
 
 impl<T> Index<mdim> for Matrix<T>
-    where T: Clone + PartialEq + Default
+    where T: Clone + PartialEq
 {
     type Output = [T];
 
     fn index(&self, row_index: mdim) -> &[T] {
-        &self.elements[row_index * self.columns..(row_index + 1) * self.columns]
+        &self.elements[row_index * self.column_count()..(row_index + 1) * self.column_count()]
     }
 }
 
 impl<T> IndexMut<mdim> for Matrix<T>
-    where T: Clone + PartialEq + Default
+    where T: Clone + PartialEq
 {
-
     fn index_mut(&mut self, row_index: mdim) -> &mut [T] {
-        &mut self.elements[row_index * self.columns..(row_index + 1) * self.columns]
+        let col_count = self.column_count();
+        &mut self.elements[row_index * col_count..(row_index + 1) * col_count]
     }
 }
 
 impl<T> Display for Matrix<T>
-    where T: Clone + PartialEq + Default + Display
+    where T: Clone + PartialEq + Display
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for row in 0..self.row_count() {
@@ -116,6 +127,14 @@ impl<T> Display for Matrix<T>
             }
             f.write_str("|\n")?;
         }
+        std::fmt::Result::Ok(())
+    }
+}
+
+impl Display for MatrixDimensions
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}x{}", self.rows, self.columns)?;
         std::fmt::Result::Ok(())
     }
 }
@@ -136,7 +155,7 @@ impl<T> Display for Matrix<T>
 
 
 impl<T> Neg for Matrix<T>
-    where T: Copy + PartialEq + Default + Neg<Output = T>
+    where T: Copy + PartialEq + Neg<Output = T>
 {
     type Output = Matrix<T>;
 
@@ -149,7 +168,7 @@ impl<T> Neg for Matrix<T>
 }
 
 impl<T> Add for Matrix<T>
-    where T: Copy + PartialEq + Default + AddAssign
+    where T: Copy + PartialEq + AddAssign
 {
     type Output = Self;
 
@@ -160,7 +179,7 @@ impl<T> Add for Matrix<T>
 }
 
 impl<T> AddAssign for Matrix<T>
-    where T: Copy + PartialEq + Default + AddAssign
+    where T: Copy + PartialEq + AddAssign
 {
     fn add_assign(&mut self, other: Self) {
         for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
@@ -170,7 +189,7 @@ impl<T> AddAssign for Matrix<T>
 }
 
 impl<T> Sub for Matrix<T>
-    where T: Copy + PartialEq + Default + SubAssign
+    where T: Copy + PartialEq + SubAssign
 {
     type Output = Self;
 
@@ -181,7 +200,7 @@ impl<T> Sub for Matrix<T>
 }
 
 impl<T> SubAssign for Matrix<T>
-    where T: Copy + PartialEq + Default + SubAssign
+    where T: Copy + PartialEq + SubAssign
 {
     fn sub_assign(&mut self, other: Self) {
         for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
@@ -207,7 +226,7 @@ impl<T> Mul for &Matrix<T>
 
     fn mul(self, rhs: Self) -> Matrix<T> {
         if self.column_count() != rhs.row_count() {
-            panic!("Cannot multiply matrices {}x{} and {}x{} because of dimensions", self.row_count(), self.column_count(), rhs.row_count(), rhs.column_count());
+            panic!("Cannot multiply matrices {} and {} because of dimensions", self.dimensions(), rhs.dimensions());
         }
         let row_count = self.row_count();
         let col_count = rhs.column_count();
@@ -240,7 +259,7 @@ impl<T> Mul<&Vector<T>> for &Matrix<T>
 
     fn mul(self, rhs: &Vector<T>) -> Vector<T> {
         if self.column_count() != rhs.len() {
-            panic!("Cannot multiply matrix {}x{} with vector {} because of dimensions", self.row_count(), self.column_count(), rhs.len());
+            panic!("Cannot multiply matrix {} with vector {} because of dimensions", self.dimensions(), rhs.len());
         }
         let mut result = Vector::<T>::new(self.row_count());
         for row in 0..self.row_count() {
