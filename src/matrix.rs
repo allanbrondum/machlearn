@@ -196,8 +196,18 @@ impl<T> Mul for Matrix<T>
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
+        &self * &rhs
+    }
+}
+
+impl<T> Mul for &Matrix<T>
+    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
+{
+    type Output = Matrix<T>;
+
+    fn mul(self, rhs: Self) -> Matrix<T> {
         if self.column_count() != rhs.row_count() {
-            panic!("Cannot multiply matrices because of dimensions");
+            panic!("Cannot multiply matrices {}x{} and {}x{} because of dimensions", self.row_count(), self.column_count(), rhs.row_count(), rhs.column_count());
         }
         let row_count = self.row_count();
         let col_count = rhs.column_count();
@@ -219,8 +229,18 @@ impl<T> Mul<Vector<T>> for Matrix<T>
     type Output = Vector<T>;
 
     fn mul(self, rhs: Vector<T>) -> Vector<T> {
+        &self * &rhs
+    }
+}
+
+impl<T> Mul<&Vector<T>> for &Matrix<T>
+    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
+{
+    type Output = Vector<T>;
+
+    fn mul(self, rhs: &Vector<T>) -> Vector<T> {
         if self.column_count() != rhs.len() {
-            panic!("Cannot multiply matrix with vector because of dimensions");
+            panic!("Cannot multiply matrix {}x{} with vector {} because of dimensions", self.row_count(), self.column_count(), rhs.len());
         }
         let mut result = Vector::<T>::new(self.row_count());
         for row in 0..self.row_count() {
@@ -450,6 +470,31 @@ mod tests {
     }
 
     #[test]
+    fn multiply_refs() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        let mut b = Matrix::new( 4, 2);
+        b[0][0] = 1;
+        b[0][1] = 2;
+        b[1][0] = 3;
+        b[1][1] = 4;
+
+        println!("{} {}", a, b);
+
+        let mut product = Matrix::new( 3, 2);
+        product[0][0] = 7;
+        product[0][1] = 10;
+        product[1][0] = 15;
+        product[1][1] = 22;
+
+        assert_eq!(product, &a * &b);
+    }
+
+    #[test]
     fn multiply_vector() {
         let mut a = Matrix::new( 3, 4);
         a[0][0] = 1;
@@ -471,4 +516,25 @@ mod tests {
         assert_eq!(product, a * b);
     }
 
+    #[test]
+    fn multiply_vector_refs() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        let mut b = Vector::new( 4);
+        b[0] = 1;
+        b[1] = 2;
+
+        println!("{} {}", a, b);
+
+        let mut product = Vector::new(3);
+        product[0] = 5;
+        product[1] = 11;
+        product[2] = 0;
+
+        assert_eq!(product, &a * &b);
+    }
 }

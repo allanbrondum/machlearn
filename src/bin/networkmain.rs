@@ -8,6 +8,8 @@ use machlearn::vector::Vector;
 fn main() {
     let mut network = Network::new(vec!(8, 6, 8));
 
+    println!("network: {}", network);
+
     let weights1 = network.weights(0);
 
     weights1[0][0] = 1.;
@@ -26,6 +28,15 @@ fn main() {
     weights2[4][4] = 1.;
     weights2[5][5] = 1.;
 
-    let input = Vector::new(5);
-    network.evaluate_input_state( input);
+    println!("network: {}", network);
+
+    let mut input = Vector::new(8);
+    input[0] = 1.;
+    input[1] = 1.;
+    input[2] = 1.;
+    input[3] = 1.;
+    input[4] = 1.;
+    let output = network.evaluate_input_state(input);
+
+    println!("output: {}", output);
 }

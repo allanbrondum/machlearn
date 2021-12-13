@@ -26,9 +26,12 @@ pub struct Network
 impl Network {
 
     pub fn evaluate_input_state(&mut self, input: Vector<ampl>) -> & Vector<ampl> {
+        if input.len() != self.layers[0].stateVector.len() {
+            panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers[0].stateVector.len())
+        }
         self.layers[0].stateVector = input;
         for i in 0..self.layers.len() - 1 {
-            // self.layers[i + 1].stateVector = self.weights[i] * self.layers[i].stateVector;
+            self.layers[i + 1].stateVector = &self.weights[i] * &self.layers[i].stateVector;
         }
         &self.layers.last().unwrap().stateVector
     }
@@ -38,11 +41,11 @@ impl Network {
     pub fn new(dimensions: Vec<usize>) -> Self {
         let mut layers = Vec::new();
         let mut weights = Vec::new();
-        for dim in &dimensions {
-            layers.push(Layer{stateVector: Vector::new(*dim)});
+        for i in 0..dimensions.len() {
+            layers.push(Layer{stateVector: Vector::new(dimensions[i])});
         }
         for i in 0..dimensions.len() - 1 {
-            weights.push(Matrix::new(dimensions[i], dimensions[i + 1]));
+            weights.push(Matrix::new(dimensions[i + 1], dimensions[i]));
         }
         Network {
             layers,
@@ -52,6 +55,24 @@ impl Network {
 
     pub fn weights(&mut self, index: usize) -> &mut Matrix<ampl> {
         &mut self.weights[index]
+    }
+}
+
+impl Display for Network
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Layers dimensions:\n");
+        for layer in &self.layers {
+            write!(f, "{}\n", layer.stateVector.len())?;
+            // f.write_fmt(format_args!("{}\n", layer.stateVector.len()));
+        }
+
+        f.write_str("Weight dimensions:\n");
+        for weight in &self.weights {
+            write!(f, "{}x{}\n", weight.row_count(), weight.column_count())?;
+        }
+
+        std::fmt::Result::Ok(())
     }
 }
 
