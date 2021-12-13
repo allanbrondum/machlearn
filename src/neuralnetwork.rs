@@ -49,17 +49,18 @@ impl<'a> Iterator for NeighbourLayersIter<'a>
 {
     type Item = NeighbourLayers<'a>;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&'a mut self) -> Option<Self::Item> {
         if self.index == self.network.layers.len() - 1 {
             None
         } else {
-            let val = NeighbourLayers{
-                layer1: &mut self.network.layers[self.index],
-                layer2: &mut self.network.layers[self.index + 1],
-                weights: &mut self.network.weights[self.index]
-            };
-            self.index += 1;
-            Some(val)
+            None
+            // let val = NeighbourLayers{
+            //     layer1: &mut self.network.layers[self.index],
+            //     layer2: &mut self.network.layers[self.index + 1],
+            //     weights: &mut self.network.weights[self.index]
+            // };
+            // self.index += 1;
+            // Some(val)
         }
     }
 }
