@@ -5,6 +5,7 @@ use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
 use std::iter::Sum;
 use itertools::Itertools;
+use crate::neuralnetwork::ampl;
 
 pub type vdim = usize;
 
@@ -35,6 +36,20 @@ impl<T> Vector<T>
 
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.elements.iter()
+    }
+
+}
+
+impl<T> Vector<T>
+    where T: Clone + PartialEq + Copy
+{
+
+    pub fn apply(self, func: fn(T) -> T) -> Self {
+        let mut ret = self;
+        for elm in &mut ret.elements {
+            *elm = func(*elm);
+        }
+        ret
     }
 }
 

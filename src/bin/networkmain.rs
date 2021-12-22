@@ -39,4 +39,14 @@ fn main() {
     let output = network.evaluate_input_state(input);
 
     println!("output: {}", output);
+
+    for layer in network.get_layers() {
+        println!("layer state: {}", layer.get_state());
+    }
+
+    println!("sigmoid 0.0: {}", Network::sigmoid(0.0));
+    println!("sigmoid 0.2: {}", Network::sigmoid(0.2));
+    println!("sigmoid 0.4: {}", Network::sigmoid(0.4));
+    println!("sigmoid 0.6: {}", Network::sigmoid(0.6));
+    println!("sigmoid 0.8: {}", Network::sigmoid(0.8));
 }

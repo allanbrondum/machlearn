@@ -1,4 +1,4 @@
-//! Simple multiplayer neural network using backpropagation for learning.
+//! Simple multilayer fully connected neural network using backpropagation for learning.
 
 use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAssign};
 use std::fmt::{Display, Formatter, Write};
@@ -16,6 +16,13 @@ pub struct Layer
     stateVector: Vector<ampl>
 }
 
+impl Layer {
+    pub fn get_state(&self) -> &Vector<ampl> {
+        &self.stateVector
+    }
+}
+
+
 #[derive(Debug, Clone)]
 pub struct Network
 {
@@ -25,13 +32,17 @@ pub struct Network
 
 impl Network {
 
+    pub fn sigmoid(input: ampl) -> ampl {
+        1. / (1. + (-input).exp())
+    }
+
     pub fn evaluate_input_state(&mut self, input: Vector<ampl>) -> & Vector<ampl> {
         if input.len() != self.layers[0].stateVector.len() {
             panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers[0].stateVector.len())
         }
         self.layers[0].stateVector = input;
         for i in 0..self.layers.len() - 1 {
-            self.layers[i + 1].stateVector = &self.weights[i] * &self.layers[i].stateVector;
+            self.layers[i + 1].stateVector = (&self.weights[i] * &self.layers[i].stateVector).apply(Network::sigmoid);
         }
         &self.layers.last().unwrap().stateVector
     }
@@ -62,6 +73,10 @@ impl Network {
             panic!("Dimensions of weights {} not as required by network {}", weights.dimensions(), self.weights[index].dimensions());
         }
         self.weights[index] = weights;
+    }
+
+    pub fn get_layers(&self) -> &Vec<Layer> {
+        &self.layers
     }
 }
 
