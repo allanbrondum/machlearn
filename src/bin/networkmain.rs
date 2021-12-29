@@ -6,7 +6,11 @@ use machlearn::neuralnetwork::Network;
 use machlearn::vector::Vector;
 
 fn main() {
+    //print_sigmoid_values();
+
     let mut network = Network::new(vec!(8, 6, 8));
+
+    let mut network2 = network.clone();
 
     println!("network: {}", network);
 
@@ -28,7 +32,7 @@ fn main() {
     weights2[5][5] = 1.;
     network.set_weights(1, weights2);
 
-    println!("network: {}", network);
+    println!("network:\n{}", network);
 
     let mut input = Vector::new(8);
     input[0] = 1.;
@@ -36,17 +40,33 @@ fn main() {
     input[2] = 1.;
     input[3] = 1.;
     input[4] = 1.;
-    let output = network.evaluate_input_state(input);
+    network.evaluate_input_state(input.clone());
+    let output = network.get_output();
 
-    println!("output: {}", output);
+    println!("output:\n{}", output);
 
-    for layer in network.get_layers() {
-        println!("layer state: {}", layer.get_state());
-    }
+    println!("network:\n{}", network);
 
+    // for layer in network.get_layers() {
+    //     println!("layer state: {}", layer.get_state());
+    // }
+
+    let output = &output.clone();
+    network2.backpropagate(input, output);
+
+    println!("network:\n{}", network2);
+}
+
+fn print_sigmoid_values() {
     println!("sigmoid 0.0: {}", Network::sigmoid(0.0));
     println!("sigmoid 0.2: {}", Network::sigmoid(0.2));
     println!("sigmoid 0.4: {}", Network::sigmoid(0.4));
     println!("sigmoid 0.6: {}", Network::sigmoid(0.6));
     println!("sigmoid 0.8: {}", Network::sigmoid(0.8));
+
+    println!("sigmoid_derived 0.0: {}", Network::sigmoid_derived(0.0));
+    println!("sigmoid_derived 0.2: {}", Network::sigmoid_derived(0.2));
+    println!("sigmoid_derived 0.4: {}", Network::sigmoid_derived(0.4));
+    println!("sigmoid_derived 0.6: {}", Network::sigmoid_derived(0.6));
+    println!("sigmoid_derived 0.8: {}", Network::sigmoid_derived(0.8));
 }

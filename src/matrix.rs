@@ -271,6 +271,35 @@ impl<T> Mul<&Vector<T>> for &Matrix<T>
     }
 }
 
+impl<T> Mul<Matrix<T>> for Vector<T>
+    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
+{
+    type Output = Vector<T>;
+
+    fn mul(self, rhs: Matrix<T>) -> Vector<T> {
+        &self * &rhs
+    }
+}
+
+impl<T> Mul<&Matrix<T>> for &Vector<T>
+    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
+{
+    type Output = Vector<T>;
+
+    fn mul(self, rhs: &Matrix<T>) -> Vector<T> {
+        if self.len() != rhs.row_count() {
+            panic!("Cannot multiply vector {} with matrix {} because of dimensions", self.len(), rhs.dimensions());
+        }
+        let mut result = Vector::<T>::new(rhs.column_count());
+        for column in 0..rhs.column_count() {
+            result[column] = rhs.col_iter(column).zip(self.iter())
+                .map(|pair| *pair.0 * *pair.1)
+                .sum();
+        }
+        result
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::matrix::*;
@@ -555,5 +584,51 @@ mod tests {
         product[2] = 0;
 
         assert_eq!(product, &a * &b);
+    }
+
+    #[test]
+    fn multiply_vector_lhs() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        let mut b = Vector::new( 3);
+        b[0] = 1;
+        b[1] = 2;
+
+        println!("{} {}", a, b);
+
+        let mut product = Vector::new(4);
+        product[0] = 7;
+        product[1] = 10;
+        product[2] = 0;
+        product[3] = 0;
+
+        assert_eq!(product, b * a);
+    }
+
+    #[test]
+    fn multiply_vector_lhs_refs() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        let mut b = Vector::new( 3);
+        b[0] = 1;
+        b[1] = 2;
+
+        println!("{} {}", a, b);
+
+        let mut product = Vector::new(4);
+        product[0] = 7;
+        product[1] = 10;
+        product[2] = 0;
+        product[3] = 0;
+
+        assert_eq!(product, &b * &a);
     }
 }
