@@ -9,6 +9,12 @@ use crate::neuralnetwork::ampl;
 
 pub type vdim = usize;
 
+trait VectorT<T> {
+    fn len(&self) -> vdim;
+
+    fn iter(&self) -> dyn Iterator<Item = &T>;
+}
+
 /// Vector with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Vector<T>
@@ -27,14 +33,14 @@ impl<T> Vector<T>
     }
 }
 
-impl<T> Vector<T>
+impl<T> VectorT<T> for Vector<T>
     where T: Clone + PartialEq
 {
-    pub fn len(&self) -> vdim {
+    fn len(&self) -> vdim {
         self.elements.len()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
+    fn iter(&self) -> Iter<'_, T> {
         self.elements.iter()
     }
 
