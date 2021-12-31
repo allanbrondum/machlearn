@@ -1,18 +1,22 @@
 //! Vector type and arithmetic operations on the Vector.
 
-use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAssign};
 use std::fmt::{Display, Formatter, Write};
-use std::slice::Iter;
 use std::iter::Sum;
+use std::ops::{Add, AddAssign, Deref, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::slice::Iter;
+
 use itertools::Itertools;
+
 use crate::neuralnetwork::ampl;
+use crate::matrix::Matrix;
 
 pub type vdim = usize;
 
-trait VectorT<T> {
+pub trait VectorT<T> :
+Index<vdim, Output=T>
+{
     fn len(&self) -> vdim;
 
-    fn iter(&self) -> dyn Iterator<Item = &T>;
 }
 
 /// Vector with arithmetic operations.
@@ -40,7 +44,14 @@ impl<T> VectorT<T> for Vector<T>
         self.elements.len()
     }
 
-    fn iter(&self) -> Iter<'_, T> {
+
+}
+
+impl<T> Vector<T>
+    where T: Clone + PartialEq
+{
+
+    pub fn iter(&self) -> impl Iterator<Item=&T> {
         self.elements.iter()
     }
 
@@ -143,6 +154,59 @@ impl<T> SubAssign for Vector<T>
         }
     }
 }
+
+impl<T> Mul for &dyn VectorT<T>
+    where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default {
+    type Output = T;
+
+    fn mul(self, rhs: Self) -> T {
+        if self.len() != rhs.len() {
+            panic!("Vector 1 length {} not equal to vector 2 length length {}", self.len(), rhs.len())
+        }
+        let mut sum = T::default();
+        for i in 0..self.len() {
+            sum += self[i] * rhs[i];
+        }
+        sum
+    }
+}
+
+impl<T> Mul for &Vector<T>
+    where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default {
+    type Output = T;
+
+    fn mul(self, rhs: Self) -> T {
+        if self.len() != rhs.len() {
+            panic!("Vector 1 length {} not equal to vector 2 length length {}", self.len(), rhs.len())
+        }
+        let mut sum = T::default();
+        for i in 0..self.len() {
+            sum += self[i] * rhs[i];
+        }
+        sum
+    }
+}
+
+// impl<T, R> Mul<Rhs=Matrix<T>> for R
+//     where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default,
+//           R: AsRef<Vector<T>> {
+//     type Output = T;
+//
+//     fn mul(self, rhs: Self) -> Self::Output {
+//
+//     }
+//
+//     // fn mul(self, rhs: Self) -> T {
+//     //     if self.len() != rhs.len() {
+//     //         panic!("Vector 1 length {} not equal to vector 2 length length {}", self.len(), rhs.len())
+//     //     }
+//     //     let mut sum = T::default();
+//     //     for i in 0..self.len() {
+//     //         sum += self[i] * rhs[i];
+//     //     }
+//     //     sum
+//     // }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -269,5 +333,19 @@ mod tests {
         assert_eq!(None, iter.next());
     }
 
+    #[test]
+    fn product() {
+        let mut a = Vector::new( 2);
+        a[0] = 1.1;
+        a[1] = 2.1;
+
+        let mut b = Vector::new( 2);
+        b[0] = 2.;
+        b[1] = 3.;
+
+        let x: &dyn VectorT<f64> = &a;
+        let y: &dyn VectorT<f64> = &b;
+        assert_eq!(8.5, x * y);
+    }
 
 }

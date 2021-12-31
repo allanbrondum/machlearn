@@ -4,7 +4,7 @@ use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAss
 use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
 use std::iter::Sum;
-use crate::vector::Vector;
+use crate::vector::{Vector, VectorT, vdim};
 
 pub type mdim = usize;
 
@@ -91,6 +91,70 @@ impl<T> Matrix<T>
 
     pub fn col_iter(&self, col: mdim) -> impl Iterator<Item = &T> {
         ColIter::new(self, col)
+    }
+
+    pub fn row<'a>(&'a self, row: mdim) -> impl VectorT<T> + 'a {
+        RowVector {
+            matrix: &self,
+            row
+        }
+    }
+
+    pub fn col<'a>(&'a self, col: mdim) -> impl VectorT<T> + 'a {
+        ColVector {
+            matrix: &self,
+            col
+        }
+    }
+}
+
+struct ColVector<'a, T>
+    where T: Clone + PartialEq
+{
+    matrix: &'a Matrix<T>,
+    col: mdim
+}
+
+impl<'a, T> Index<vdim> for ColVector<'a, T>
+    where T: Clone + PartialEq
+{
+    type Output = T;
+
+    fn index(&self, index: vdim) -> &T {
+        &self.matrix[index][self.col]
+    }
+}
+
+impl<'a, T> VectorT<T> for ColVector<'a, T>
+    where T: Clone + PartialEq
+{
+    fn len(&self) -> vdim {
+        self.matrix.row_count()
+    }
+}
+
+struct RowVector<'a, T>
+    where T: Clone + PartialEq
+{
+    matrix: &'a Matrix<T>,
+    row: mdim
+}
+
+impl<'a, T> Index<vdim> for RowVector<'a, T>
+    where T: Clone + PartialEq
+{
+    type Output = T;
+
+    fn index(&self, index: vdim) -> &T {
+        &self.matrix[self.row][index]
+    }
+}
+
+impl<'a, T> VectorT<T> for RowVector<'a, T>
+    where T: Clone + PartialEq
+{
+    fn len(&self) -> vdim {
+        self.matrix.column_count()
     }
 }
 
@@ -281,6 +345,23 @@ impl<T> Mul<Matrix<T>> for Vector<T>
     }
 }
 
+// impl<T, V: VectorT<T>> Mul<&Matrix<T>> for &V
+//     where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
+// {
+//     type Output = Vector<T>;
+//
+//     fn mul(self, rhs: &Matrix<T>) -> Vector<T> {
+//         if self.len() != rhs.row_count() {
+//             panic!("Cannot multiply vector {} with matrix {} because of dimensions", self.len(), rhs.dimensions());
+//         }
+//         let mut result = Vector::<T>::new(rhs.column_count());
+//         for column in 0..rhs.column_count() {
+//             result[column] = &rhs.col(column) * self;
+//         }
+//         result
+//     }
+// }
+
 impl<T> Mul<&Matrix<T>> for &Vector<T>
     where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
 {
@@ -299,6 +380,20 @@ impl<T> Mul<&Matrix<T>> for &Vector<T>
         result
     }
 }
+
+impl<T> Matrix<T>
+    where T: Clone + PartialEq + Copy
+{
+
+    pub fn apply(self, func: fn(T) -> T) -> Self {
+        let mut ret = self;
+        for elm in &mut ret.elements {
+            *elm = func(*elm);
+        }
+        ret
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -630,5 +725,38 @@ mod tests {
         product[3] = 0;
 
         assert_eq!(product, &b * &a);
+    }
+
+    #[test]
+    fn col_vector() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        let b = a.col(1);
+
+        assert_eq!(3, b.len());
+        assert_eq!(2, b[0]);
+        assert_eq!(4, b[1]);
+        assert_eq!(0, b[2]);
+    }
+
+    #[test]
+    fn row_vector() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        let b = a.row(1);
+
+        assert_eq!(4, b.len());
+        assert_eq!(3, b[0]);
+        assert_eq!(4, b[1]);
+        assert_eq!(0, b[2]);
+        assert_eq!(0, b[3]);
     }
 }

@@ -4,7 +4,7 @@ use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAss
 use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
 use std::iter::Sum;
-use crate::vector::Vector;
+use crate::vector::{Vector, VectorT};
 use crate::matrix::Matrix;
 use crate::matrix::mdim;
 
@@ -60,15 +60,17 @@ pub struct Network
     connectors: Vec<Connector>
 }
 
+const ny: f64 = 0.1;
+
+pub fn sigmoid(input: ampl) -> ampl {
+    1. / (1. + (-input).exp())
+}
+
+pub fn sigmoid_derived(input: ampl) -> ampl {
+    (-input).exp() / (1. + (-input).exp()).powf(2.)
+}
+
 impl Network {
-
-    pub fn sigmoid(input: ampl) -> ampl {
-        1. / (1. + (-input).exp())
-    }
-
-    pub fn sigmoid_derived(input: ampl) -> ampl {
-        (-input).exp() / (1. + (-input).exp()).powf(2.)
-    }
 
     pub fn evaluate_input_state(&mut self, input: Vector<ampl>) {
         if input.len() != self.layers.first().unwrap().state.len() {
@@ -76,7 +78,7 @@ impl Network {
         }
         self.layers[0].state = input;
         for i in 0..self.layers.len() - 1 {
-            self.layers[i + 1].state = (&self.connectors[i].weights * &self.layers[i].state).apply(Network::sigmoid);
+            self.layers[i + 1].state = (&self.connectors[i].weights * &self.layers[i].state).apply(sigmoid);
         }
     }
 
@@ -97,7 +99,7 @@ impl Network {
             let last_connector = self.connectors.last_mut().unwrap();
             let tmp = &last_connector.weights * &layer1.state;
             for i in 0..last_connector.back_propagation_delta.len() {
-                last_connector.back_propagation_delta[i] = -2. * Network::sigmoid_derived(tmp[i]) * (output[i] - layer2.state[i]);
+                last_connector.back_propagation_delta[i] = -2. * sigmoid_derived(tmp[i]) * (output[i] - layer2.state[i]);
             }
         }
 
@@ -109,7 +111,17 @@ impl Network {
             let connector = &mut self.connectors[connector_index];
             let tmp1 = &connector.weights * &layer1.state;
             for i in 0..connector.back_propagation_delta.len() {
-                connector.back_propagation_delta[i] = Network::sigmoid_derived(tmp1[i]) * tmp2[i];
+                connector.back_propagation_delta[i] = sigmoid_derived(tmp1[i]) * tmp2[i];
+            }
+        }
+
+        for connector_index in 0..self.connectors.len() {
+            let connector = &mut self.connectors[connector_index];
+            let layer1 = &self.layers[connector_index];
+            for i in 0..connector.weights.row_count() {
+                for j in 0..connector.weights.column_count() {
+                    connector.weights[i][j] += - ny * layer1.state[j] * connector.back_propagation_delta[i];
+                }
             }
         }
     }
