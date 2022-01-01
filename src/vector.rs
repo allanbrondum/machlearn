@@ -187,14 +187,50 @@ impl<T> Mul for &Vector<T>
     }
 }
 
-// impl<T, R> Mul<Rhs=Matrix<T>> for R
-//     where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default,
-//           R: AsRef<Vector<T>> {
-//     type Output = T;
+impl<'a, T> AsRef<dyn VectorT<T> + 'a> for Vector<T>
+    where T: Clone + PartialEq {
+
+    fn as_ref(&self) -> &(dyn VectorT<T> + 'a) {
+        self
+    }
+}
+
+pub trait Mult<T, Rhs = Self> {
+
+    type Output;
+
+    fn mult(self, rhs: Rhs) -> Self::Output;
+}
+
+
+impl<T, R: AsRef<dyn VectorT<T>>> Mult<T> for R
+    where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default
+{
+    type Output = T;
+
+    fn mult(self, rhs: Self) -> Self::Output {
+        let v1 = self.as_ref();
+        let v2 = rhs.as_ref();
+        if v1.len() != v2.len() {
+            panic!("Vector 1 length {} not equal to vector 2 length length {}", v1.len(), v2.len())
+        }
+        let mut sum = T::default();
+        for i in 0..v1.len() {
+            sum += v1[i] * v2[i];
+        }
+        sum
+    }
+}
+
+// impl<T, V: VectorT<T>, R: AsRef<V>> Mul for R
+//  {
+//      type Output = T;
 //
-//     fn mul(self, rhs: Self) -> Self::Output {
 //
+//      fn mul(self, rhs: &Self) -> Self::Output {
+//         todo!()
 //     }
+//
 //
 //     // fn mul(self, rhs: Self) -> T {
 //     //     if self.len() != rhs.len() {

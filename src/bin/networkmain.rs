@@ -4,7 +4,7 @@ use std::ops::IndexMut;
 use machlearn::matrix::Matrix;
 use machlearn::neuralnetwork::{Network, sigmoid, sigmoid_derived, ampl};
 use machlearn::vector::Vector;
-use rand::Rng;
+use rand::{Rng, random};
 
 fn main() {
     //print_sigmoid_values();
@@ -20,15 +20,11 @@ fn main() {
         rng.gen()
     }
 
-    let mut weights1 = Matrix::new(6, 8);
-    weights1 = weights1.apply(rnggen);
-    network.set_weights(0, weights1);
+    network.set_weights(0, Matrix::new(6, 8).apply(rnggen));
+    network.set_weights(1, Matrix::new(8, 6).apply(rnggen));
 
-    let mut weights2 = Matrix::new(8, 6);
-    weights2 = weights2.apply(rnggen);
-    network.set_weights(1, weights2);
-
-    println!("network:\n{}", network);
+    network2.set_weights(0, Matrix::new(6, 8).apply(rnggen));
+    network2.set_weights(1, Matrix::new(8, 6).apply(rnggen));
 
     let mut input = Vector::new(8);
     input[0] = 1.;
@@ -56,6 +52,8 @@ fn main() {
 
         network2.backpropagate(input.clone(), output);
     }
+
+    println!("network:\n{}", network);
 
     println!("network:\n{}", network2);
 
