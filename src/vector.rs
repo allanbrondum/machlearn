@@ -7,8 +7,10 @@ use std::slice::Iter;
 
 use itertools::Itertools;
 
-use crate::neuralnetwork::ampl;
 use crate::matrix::Matrix;
+use crate::neuralnetwork::ampl;
+
+pub mod arit;
 
 pub type vdim = usize;
 
@@ -100,153 +102,22 @@ impl<T> Display for Vector<T>
     }
 }
 
-impl<T> Neg for Vector<T>
-    where T: Copy + PartialEq + Neg<Output = T>
-{
-    type Output = Vector<T>;
 
-    fn neg(mut self) -> Self::Output {
-        for elm in self.elements.iter_mut() {
-            *elm = elm.neg();
-        }
-        self
-    }
-}
-
-impl<T> Add for Vector<T>
-    where T: Copy + PartialEq + AddAssign
-{
-    type Output = Self;
-
-    fn add(mut self, rhs: Self) -> Self::Output {
-        self += rhs;
-        self
-    }
-}
-
-impl<T> AddAssign for Vector<T>
-    where T: Copy + PartialEq + AddAssign
-{
-    fn add_assign(&mut self, other: Self) {
-        for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
-            *elm_pair.0 += *elm_pair.1;
-        }
-    }
-}
-
-impl<T> Sub for Vector<T>
-    where T: Copy + PartialEq + SubAssign
-{
-    type Output = Self;
-
-    fn sub(mut self, rhs: Self) -> Self::Output {
-        self -= rhs;
-        self
-    }
-}
-
-impl<T> SubAssign for Vector<T>
-    where T: Copy + PartialEq + SubAssign
-{
-    fn sub_assign(&mut self, other: Self) {
-        for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
-            *elm_pair.0 -= *elm_pair.1;
-        }
-    }
-}
-
-impl<T> Mul for &dyn VectorT<T>
-    where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default {
-    type Output = T;
-
-    fn mul(self, rhs: Self) -> T {
-        if self.len() != rhs.len() {
-            panic!("Vector 1 length {} not equal to vector 2 length length {}", self.len(), rhs.len())
-        }
-        let mut sum = T::default();
-        for i in 0..self.len() {
-            sum += self[i] * rhs[i];
-        }
-        sum
-    }
-}
-
-impl<T> Mul for &Vector<T>
-    where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default {
-    type Output = T;
-
-    fn mul(self, rhs: Self) -> T {
-        if self.len() != rhs.len() {
-            panic!("Vector 1 length {} not equal to vector 2 length length {}", self.len(), rhs.len())
-        }
-        let mut sum = T::default();
-        for i in 0..self.len() {
-            sum += self[i] * rhs[i];
-        }
-        sum
-    }
-}
 
 impl<'a, T> AsRef<dyn VectorT<T> + 'a> for Vector<T>
-    where T: Clone + PartialEq {
+    where T: Clone + PartialEq + 'a {
 
     fn as_ref(&self) -> &(dyn VectorT<T> + 'a) {
         self
     }
 }
 
-pub trait Mult<T, Rhs = Self> {
 
-    type Output;
-
-    fn mult(self, rhs: Rhs) -> Self::Output;
-}
-
-
-impl<T, R: AsRef<dyn VectorT<T>>> Mult<T> for R
-    where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default
-{
-    type Output = T;
-
-    fn mult(self, rhs: Self) -> Self::Output {
-        let v1 = self.as_ref();
-        let v2 = rhs.as_ref();
-        if v1.len() != v2.len() {
-            panic!("Vector 1 length {} not equal to vector 2 length length {}", v1.len(), v2.len())
-        }
-        let mut sum = T::default();
-        for i in 0..v1.len() {
-            sum += v1[i] * v2[i];
-        }
-        sum
-    }
-}
-
-// impl<T, V: VectorT<T>, R: AsRef<V>> Mul for R
-//  {
-//      type Output = T;
-//
-//
-//      fn mul(self, rhs: &Self) -> Self::Output {
-//         todo!()
-//     }
-//
-//
-//     // fn mul(self, rhs: Self) -> T {
-//     //     if self.len() != rhs.len() {
-//     //         panic!("Vector 1 length {} not equal to vector 2 length length {}", self.len(), rhs.len())
-//     //     }
-//     //     let mut sum = T::default();
-//     //     for i in 0..self.len() {
-//     //         sum += self[i] * rhs[i];
-//     //     }
-//     //     sum
-//     // }
-// }
 
 #[cfg(test)]
 mod tests {
     use crate::vector::*;
+    use crate::vector::arit::VectorProduct;
 
     #[test]
     fn equals() {
@@ -369,8 +240,23 @@ mod tests {
         assert_eq!(None, iter.next());
     }
 
+    // #[test]
+    // fn mul1() {
+    //     let mut a = Vector::new( 2);
+    //     a[0] = 1.1;
+    //     a[1] = 2.1;
+    //
+    //     let mut b = Vector::new( 2);
+    //     b[0] = 2.;
+    //     b[1] = 3.;
+    //
+    //     let x: &dyn VectorT<f64> = &a;
+    //     let y: &dyn VectorT<f64> = &b;
+    //     assert_eq!(8.5, x * y);
+    // }
+
     #[test]
-    fn product() {
+    fn mul2() {
         let mut a = Vector::new( 2);
         a[0] = 1.1;
         a[1] = 2.1;
@@ -379,9 +265,31 @@ mod tests {
         b[0] = 2.;
         b[1] = 3.;
 
-        let x: &dyn VectorT<f64> = &a;
-        let y: &dyn VectorT<f64> = &b;
+        let x: &Vector<f64> = &a;
+        let y: &Vector<f64> = &b;
         assert_eq!(8.5, x * y);
+        assert_eq!(8.5, &a * &b);
+        assert_eq!(8.5, (&a).mul(&b));
+        // assert_eq!(8.5, (&a).mul(&b));
+        assert_eq!(8.5, <&Vector<f64> as Mul>::mul(&a, &b));
+        assert_eq!(8.5, Mul::mul(&a, &b));
+    }
+
+    #[test]
+    fn mul3() {
+        let mut a = Vector::new( 2);
+        a[0] = 1.1;
+        a[1] = 2.1;
+
+        let mut b = Vector::new( 2);
+        b[0] = 2.;
+        b[1] = 3.;
+
+        assert_eq!(8.5, a.vec_prod(&b));
+        assert_eq!(8.5, (&a).vec_prod(&b));
+        assert_eq!(8.5, <&Vector<f64> as VectorProduct<f64>>::vec_prod(&a, &b));
+        assert_eq!(8.5, VectorProduct::vec_prod(&a, &b));
+        assert_eq!(8.5, VectorProduct::<f64>::vec_prod(&a, &b));
     }
 
 }
