@@ -12,12 +12,10 @@ use crate::neuralnetwork::ampl;
 
 pub mod arit;
 
-pub type vdim = usize;
-
 pub trait VectorT<T> :
-Index<vdim, Output=T>
+Index<usize, Output=T>
 {
-    fn len(&self) -> vdim;
+    fn len(&self) -> usize;
 
 }
 
@@ -32,7 +30,7 @@ pub struct Vector<T>
 impl<T> Vector<T>
     where T: Clone + PartialEq + Default
 {
-    pub fn new(len: vdim) -> Vector<T> {
+    pub fn new(len: usize) -> Vector<T> {
         Vector {
             elements: vec![Default::default(); len]
         }
@@ -42,7 +40,7 @@ impl<T> Vector<T>
 impl<T> VectorT<T> for Vector<T>
     where T: Clone + PartialEq
 {
-    fn len(&self) -> vdim {
+    fn len(&self) -> usize {
         self.elements.len()
     }
 
@@ -72,21 +70,21 @@ impl<T> Vector<T>
     }
 }
 
-impl<T> Index<vdim> for Vector<T>
+impl<T> Index<usize> for Vector<T>
     where T: Clone + PartialEq
 {
     type Output = T;
 
-    fn index(&self, index: vdim) -> &T {
+    fn index(&self, index: usize) -> &T {
         &self.elements[index]
     }
 }
 
-impl<T> IndexMut<vdim> for Vector<T>
+impl<T> IndexMut<usize> for Vector<T>
     where T: Clone + PartialEq
 {
 
-    fn index_mut(&mut self, index: vdim) -> &mut T {
+    fn index_mut(&mut self, index: usize) -> &mut T {
         &mut self.elements[index]
     }
 }

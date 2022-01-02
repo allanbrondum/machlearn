@@ -4,11 +4,9 @@ use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAss
 use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
 use std::iter::Sum;
-use crate::vector::{Vector, VectorT, vdim};
+use crate::vector::{Vector, VectorT};
 
 pub mod arit;
-
-pub type mdim = usize;
 
 /// Matrix with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -21,22 +19,22 @@ pub struct Matrix<T>
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct MatrixDimensions {
-    rows: mdim,
-    columns: mdim
+    rows: usize,
+    columns: usize
 }
 
 struct ColIter<'a, T>
     where T: Clone + PartialEq
 {
     matrix: &'a Matrix<T>,
-    column: mdim,
-    row: mdim
+    column: usize,
+    row: usize
 }
 
 impl<T> ColIter<'_, T>
     where T: Clone + PartialEq
 {
-    fn new(matrix: &Matrix<T>, column: mdim) -> ColIter<T> {
+    fn new(matrix: &Matrix<T>, column: usize) -> ColIter<T> {
         ColIter {
             matrix,
             column,
@@ -64,7 +62,7 @@ impl<'a, T> Iterator for ColIter<'a, T>
 impl<T> Matrix<T>
     where T: Clone + PartialEq + Default
 {
-    pub fn new(rows: mdim, columns: mdim) -> Matrix<T> {
+    pub fn new(rows: usize, columns: usize) -> Matrix<T> {
         Matrix {
             dimensions: MatrixDimensions { rows, columns },
             elements: vec![Default::default(); rows * columns]
@@ -75,11 +73,11 @@ impl<T> Matrix<T>
 impl<T> Matrix<T>
     where T: Clone + PartialEq
 {
-    pub fn column_count(&self) -> mdim {
+    pub fn column_count(&self) -> usize {
         self.dimensions.columns
     }
 
-    pub fn row_count(&self) -> mdim {
+    pub fn row_count(&self) -> usize {
         self.dimensions.rows
     }
 
@@ -87,22 +85,22 @@ impl<T> Matrix<T>
         self.dimensions
     }
 
-    pub fn row_iter(&self, row: mdim) -> impl Iterator<Item = &T> {
+    pub fn row_iter(&self, row: usize) -> impl Iterator<Item = &T> {
         self[row].iter()
     }
 
-    pub fn col_iter(&self, col: mdim) -> impl Iterator<Item = &T> {
+    pub fn col_iter(&self, col: usize) -> impl Iterator<Item = &T> {
         ColIter::new(self, col)
     }
 
-    pub fn row<'a>(&'a self, row: mdim) -> impl VectorT<T> + 'a {
+    pub fn row<'a>(&'a self, row: usize) -> impl VectorT<T> + 'a {
         RowVector {
             matrix: &self,
             row
         }
     }
 
-    pub fn col<'a>(&'a self, col: mdim) -> impl VectorT<T> + 'a {
+    pub fn col<'a>(&'a self, col: usize) -> impl VectorT<T> + 'a {
         ColVector {
             matrix: &self,
             col
@@ -114,15 +112,15 @@ struct ColVector<'a, T>
     where T: Clone + PartialEq
 {
     matrix: &'a Matrix<T>,
-    col: mdim
+    col: usize
 }
 
-impl<'a, T> Index<vdim> for ColVector<'a, T>
+impl<'a, T> Index<usize> for ColVector<'a, T>
     where T: Clone + PartialEq
 {
     type Output = T;
 
-    fn index(&self, index: vdim) -> &T {
+    fn index(&self, index: usize) -> &T {
         &self.matrix[index][self.col]
     }
 }
@@ -130,7 +128,7 @@ impl<'a, T> Index<vdim> for ColVector<'a, T>
 impl<'a, T> VectorT<T> for ColVector<'a, T>
     where T: Clone + PartialEq
 {
-    fn len(&self) -> vdim {
+    fn len(&self) -> usize {
         self.matrix.row_count()
     }
 }
@@ -139,15 +137,15 @@ struct RowVector<'a, T>
     where T: Clone + PartialEq
 {
     matrix: &'a Matrix<T>,
-    row: mdim
+    row: usize
 }
 
-impl<'a, T> Index<vdim> for RowVector<'a, T>
+impl<'a, T> Index<usize> for RowVector<'a, T>
     where T: Clone + PartialEq
 {
     type Output = T;
 
-    fn index(&self, index: vdim) -> &T {
+    fn index(&self, index: usize) -> &T {
         &self.matrix[self.row][index]
     }
 }
@@ -155,25 +153,25 @@ impl<'a, T> Index<vdim> for RowVector<'a, T>
 impl<'a, T> VectorT<T> for RowVector<'a, T>
     where T: Clone + PartialEq
 {
-    fn len(&self) -> vdim {
+    fn len(&self) -> usize {
         self.matrix.column_count()
     }
 }
 
-impl<T> Index<mdim> for Matrix<T>
+impl<T> Index<usize> for Matrix<T>
     where T: Clone + PartialEq
 {
     type Output = [T];
 
-    fn index(&self, row_index: mdim) -> &[T] {
+    fn index(&self, row_index: usize) -> &[T] {
         &self.elements[row_index * self.column_count()..(row_index + 1) * self.column_count()]
     }
 }
 
-impl<T> IndexMut<mdim> for Matrix<T>
+impl<T> IndexMut<usize> for Matrix<T>
     where T: Clone + PartialEq
 {
-    fn index_mut(&mut self, row_index: mdim) -> &mut [T] {
+    fn index_mut(&mut self, row_index: usize) -> &mut [T] {
         let col_count = self.column_count();
         &mut self.elements[row_index * col_count..(row_index + 1) * col_count]
     }

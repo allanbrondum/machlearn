@@ -6,7 +6,6 @@ use std::slice::Iter;
 use std::iter::Sum;
 use crate::vector::{Vector, VectorT};
 use crate::matrix::Matrix;
-use crate::matrix::mdim;
 
 pub type ampl = f64;
 
@@ -25,7 +24,7 @@ pub struct Connector
 
 impl Layer {
 
-    pub fn new(dimension: mdim) -> Layer {
+    pub fn new(dimension: usize) -> Layer {
         Layer {
             state: Vector::new(dimension)
         }
@@ -37,7 +36,7 @@ impl Layer {
 }
 
 impl Connector {
-    pub fn new(layer1_dimension: mdim, layer2_dimension: mdim) -> Connector {
+    pub fn new(layer1_dimension: usize, layer2_dimension: usize) -> Connector {
         Connector {
             weights: Matrix::new(layer2_dimension, layer1_dimension),
             back_propagation_delta: Vector::new(layer2_dimension)
