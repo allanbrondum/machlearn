@@ -1,11 +1,11 @@
 use std::ops::{Neg, AddAssign, Sub, SubAssign, Add, Mul};
 use crate::vector::{Vector, VectorT};
-use crate::matrix::{Matrix, MatrixT};
+use crate::matrix::{Matrix, MatrixT, MatrixElement};
 use std::iter::Sum;
 
 
 impl<T> Neg for Vector<T>
-    where T: Copy + PartialEq + Neg<Output = T>
+    where T: MatrixElement
 {
     type Output = Vector<T>;
 
@@ -18,7 +18,7 @@ impl<T> Neg for Vector<T>
 }
 
 impl<T> Add for Vector<T>
-    where T: Copy + PartialEq + AddAssign
+    where T: MatrixElement
 {
     type Output = Self;
 
@@ -29,7 +29,7 @@ impl<T> Add for Vector<T>
 }
 
 impl<T> AddAssign for Vector<T>
-    where T: Copy + PartialEq + AddAssign
+    where T: MatrixElement
 {
     fn add_assign(&mut self, other: Self) {
         for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
@@ -39,7 +39,7 @@ impl<T> AddAssign for Vector<T>
 }
 
 impl<T> Sub for Vector<T>
-    where T: Copy + PartialEq + SubAssign
+    where T: MatrixElement
 {
     type Output = Self;
 
@@ -50,7 +50,7 @@ impl<T> Sub for Vector<T>
 }
 
 impl<T> SubAssign for Vector<T>
-    where T: Copy + PartialEq + SubAssign
+    where T: MatrixElement
 {
     fn sub_assign(&mut self, other: Self) {
         for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
@@ -60,40 +60,40 @@ impl<T> SubAssign for Vector<T>
 }
 
 impl<T> Mul for &Vector<T>
-    where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default + 'static {
+    where T: MatrixElement {
     type Output = T;
 
     fn mul(self, rhs: Self) -> T {
-       VectorProduct::vec_prod(self, rhs)
+       self.vec_prod(rhs)
     }
 }
 
-pub trait VectorProduct<T>
-    where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default + 'static {
-
-    fn vec_prod(self, rhs: Self) -> T;
-}
-
-impl<T, R: AsRef<dyn VectorT<T>>> VectorProduct<T> for &R
-    where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default + 'static
-{
-
-    fn vec_prod(self, rhs: Self) -> T {
-        let v1 = self.as_ref();
-        let v2 = rhs.as_ref();
-        if v1.len() != v2.len() {
-            panic!("Vector 1 length {} not equal to vector 2 length {}", v1.len(), v2.len())
-        }
-        let mut sum = T::default();
-        for i in 0..v1.len() {
-            sum += v1[i] * v2[i];
-        }
-        sum
-    }
-}
+// pub trait VectorProduct<T>
+//     where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default + 'static {
+//
+//     fn vec_prod(self, rhs: Self) -> T;
+// }
+//
+// impl<T, R: AsRef<dyn VectorT<T>>> VectorProduct<T> for &R
+//     where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default + 'static
+// {
+//
+//     fn vec_prod(self, rhs: Self) -> T {
+//         let v1 = self.as_ref();
+//         let v2 = rhs.as_ref();
+//         if v1.len() != v2.len() {
+//             panic!("Vector 1 length {} not equal to vector 2 length {}", v1.len(), v2.len())
+//         }
+//         let mut sum = T::default();
+//         for i in 0..v1.len() {
+//             sum += v1[i] * v2[i];
+//         }
+//         sum
+//     }
+// }
 
 impl<T> Mul<Vector<T>> for Matrix<T>
-    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
+    where T: MatrixElement
 {
     type Output = Vector<T>;
 
@@ -103,7 +103,7 @@ impl<T> Mul<Vector<T>> for Matrix<T>
 }
 
 impl<T> Mul<&Vector<T>> for &Matrix<T>
-    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
+    where T: MatrixElement
 {
     type Output = Vector<T>;
 
@@ -122,7 +122,7 @@ impl<T> Mul<&Vector<T>> for &Matrix<T>
 }
 
 impl<T> Mul<Matrix<T>> for Vector<T>
-    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
+    where T: MatrixElement
 {
     type Output = Vector<T>;
 
@@ -149,7 +149,7 @@ impl<T> Mul<Matrix<T>> for Vector<T>
 // }
 
 impl<T> Mul<&Matrix<T>> for &Vector<T>
-    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
+    where T: MatrixElement
 {
     type Output = Vector<T>;
 

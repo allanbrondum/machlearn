@@ -8,8 +8,24 @@ use crate::vector::{Vector, VectorT};
 
 pub mod arit;
 
-pub trait MatrixT<T> :
-Index<usize, Output=[T]>
+pub trait MatrixElement: Copy + PartialEq + AddAssign + Add<Output=Self> + Mul<Output=Self> + Default + Display + Neg<Output=Self> + SubAssign + Sub<Output=Self> + Sum + 'static {
+
+}
+
+impl MatrixElement for f64 {
+}
+
+impl MatrixElement for f32 {
+}
+
+impl MatrixElement for i32 {
+}
+
+impl MatrixElement for i64 {
+}
+
+pub trait MatrixT<T>
+    where T: MatrixElement
 {
     fn dimensions(&self) -> MatrixDimensions;
 
@@ -19,7 +35,7 @@ Index<usize, Output=[T]>
 /// Matrix with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Matrix<T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     dimensions: MatrixDimensions,
     elements: Vec<T>
@@ -32,7 +48,7 @@ pub struct MatrixDimensions {
 }
 
 struct ColIter<'a, T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     matrix: &'a Matrix<T>,
     column: usize,
@@ -40,7 +56,7 @@ struct ColIter<'a, T>
 }
 
 impl<T> ColIter<'_, T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     fn new(matrix: &Matrix<T>, column: usize) -> ColIter<T> {
         ColIter {
@@ -52,7 +68,7 @@ impl<T> ColIter<'_, T>
 }
 
 impl<'a, T> Iterator for ColIter<'a, T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     type Item = &'a T;
 
@@ -68,7 +84,7 @@ impl<'a, T> Iterator for ColIter<'a, T>
 }
 
 impl<T> Matrix<T>
-    where T: Clone + PartialEq + Default
+    where T: MatrixElement
 {
     pub fn new(rows: usize, columns: usize) -> Matrix<T> {
         Matrix {
@@ -80,7 +96,7 @@ impl<T> Matrix<T>
 
 
 impl<T> MatrixT<T> for Matrix<T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     fn dimensions(&self) -> MatrixDimensions {
         self.dimensions
@@ -92,7 +108,7 @@ impl<T> MatrixT<T> for Matrix<T>
 }
 
 impl<T> Matrix<T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     pub fn column_count(&self) -> usize {
         self.dimensions.columns
@@ -126,14 +142,14 @@ impl<T> Matrix<T>
 }
 
 struct ColVector<'a, T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     matrix: &'a Matrix<T>,
     col: usize
 }
 
 impl<'a, T> Index<usize> for ColVector<'a, T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     type Output = T;
 
@@ -143,7 +159,7 @@ impl<'a, T> Index<usize> for ColVector<'a, T>
 }
 
 impl<'a, T> VectorT<T> for ColVector<'a, T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     fn len(&self) -> usize {
         self.matrix.row_count()
@@ -151,14 +167,14 @@ impl<'a, T> VectorT<T> for ColVector<'a, T>
 }
 
 struct RowVector<'a, T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     matrix: &'a Matrix<T>,
     row: usize
 }
 
 impl<'a, T> Index<usize> for RowVector<'a, T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     type Output = T;
 
@@ -168,7 +184,7 @@ impl<'a, T> Index<usize> for RowVector<'a, T>
 }
 
 impl<'a, T> VectorT<T> for RowVector<'a, T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     fn len(&self) -> usize {
         self.matrix.column_count()
@@ -176,7 +192,7 @@ impl<'a, T> VectorT<T> for RowVector<'a, T>
 }
 
 impl<T> Index<usize> for Matrix<T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     type Output = [T];
 
@@ -186,7 +202,7 @@ impl<T> Index<usize> for Matrix<T>
 }
 
 impl<T> IndexMut<usize> for Matrix<T>
-    where T: Clone + PartialEq
+    where T: MatrixElement
 {
     fn index_mut(&mut self, row_index: usize) -> &mut [T] {
         let col_count = self.column_count();
@@ -195,7 +211,7 @@ impl<T> IndexMut<usize> for Matrix<T>
 }
 
 impl<T> Display for Matrix<T>
-    where T: Clone + PartialEq + Display
+    where T: MatrixElement
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for row in 0..self.row_count() {
@@ -221,7 +237,7 @@ impl Display for MatrixDimensions
 }
 
 impl<T> Matrix<T>
-    where T: Clone + PartialEq + Copy
+    where T: MatrixElement
 {
 
     pub fn apply(self, func: fn(T) -> T) -> Self {
@@ -234,12 +250,38 @@ impl<T> Matrix<T>
 }
 
 impl<'a, T> AsRef<dyn MatrixT<T> + 'a> for Matrix<T>
-    where T: Clone + PartialEq + 'a {
+    where T: MatrixElement
+{
 
     fn as_ref(&self) -> &(dyn MatrixT<T> + 'a) {
         self
     }
 }
+
+struct TransposedMatrix<'a, T> {
+    matrix: &'a dyn MatrixT<T>
+}
+
+impl<'a, T> MatrixT<T> for TransposedMatrix<'a, T>
+    where T: MatrixElement
+{
+    fn dimensions(&self) -> MatrixDimensions {
+        MatrixDimensions {
+            rows: self.dimensions().columns,
+            columns: self.dimensions().rows
+        }
+    }
+
+    fn elm(&self, row: usize, col: usize) -> &T {
+        self.elm(col, row)
+    }
+}
+
+// impl<T, R: AsRef<dyn MatrixT<T>>> MatrixMultiplication<T> for &R
+//     where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + AddAssign + Sum + 'static
+// {
+//
+// }
 
 #[cfg(test)]
 mod tests {
@@ -605,4 +647,21 @@ mod tests {
         assert_eq!(0, b[2]);
         assert_eq!(0, b[3]);
     }
+
+    #[test]
+    fn elm() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        assert_eq!(1, *a.elm(0, 0));
+        assert_eq!(2, *a.elm(0, 1));
+        assert_eq!(3, *a.elm(1, 0));
+        assert_eq!(4, *a.elm(1, 1));
+
+    }
+
+
 }

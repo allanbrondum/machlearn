@@ -1,9 +1,9 @@
 use std::ops::{Neg, Add, AddAssign, Sub, SubAssign, Mul};
-use crate::matrix::{Matrix, MatrixT};
+use crate::matrix::{Matrix, MatrixT, MatrixElement};
 use std::iter::Sum;
 
 impl<T> Neg for Matrix<T>
-    where T: Copy + PartialEq + Neg<Output = T>
+    where T: MatrixElement
 {
     type Output = Matrix<T>;
 
@@ -16,7 +16,7 @@ impl<T> Neg for Matrix<T>
 }
 
 impl<T> Add for Matrix<T>
-    where T: Copy + PartialEq + AddAssign
+    where T: MatrixElement
 {
     type Output = Self;
 
@@ -27,7 +27,7 @@ impl<T> Add for Matrix<T>
 }
 
 impl<T> AddAssign for Matrix<T>
-    where T: Copy + PartialEq + AddAssign
+    where T: MatrixElement
 {
     fn add_assign(&mut self, other: Self) {
         for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
@@ -37,7 +37,7 @@ impl<T> AddAssign for Matrix<T>
 }
 
 impl<T> Sub for Matrix<T>
-    where T: Copy + PartialEq + SubAssign
+    where T: MatrixElement
 {
     type Output = Self;
 
@@ -48,7 +48,7 @@ impl<T> Sub for Matrix<T>
 }
 
 impl<T> SubAssign for Matrix<T>
-    where T: Copy + PartialEq + SubAssign
+    where T: MatrixElement
 {
     fn sub_assign(&mut self, other: Self) {
         for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
@@ -58,7 +58,7 @@ impl<T> SubAssign for Matrix<T>
 }
 
 impl<T> Mul for Matrix<T>
-    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + AddAssign + Sum + 'static
+    where T: MatrixElement
 {
     type Output = Self;
 
@@ -68,7 +68,7 @@ impl<T> Mul for Matrix<T>
 }
 
 impl<T> Mul for &Matrix<T>
-    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + AddAssign + Sum + 'static
+    where T: MatrixElement
 {
     type Output = Matrix<T>;
 
@@ -78,13 +78,14 @@ impl<T> Mul for &Matrix<T>
 }
 
 pub trait MatrixMultiplication<T>
-    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum + 'static {
+    where T: MatrixElement
+{
 
     fn mat_mul(self, rhs: Self) -> Matrix<T>;
 }
 
 impl<T, R: AsRef<dyn MatrixT<T>>> MatrixMultiplication<T> for &R
-    where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + AddAssign + Sum + 'static
+    where T: MatrixElement
 {
     fn mat_mul(self, rhs: Self) -> Matrix<T> {
         let m1 = self.as_ref();
