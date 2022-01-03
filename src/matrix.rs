@@ -30,6 +30,30 @@ pub trait MatrixT<T>
     fn dimensions(&self) -> MatrixDimensions;
 
     fn elm(&self, row: usize, col:usize) -> &T;
+
+    fn mat_mul(&self, rhs: &dyn AsRef<dyn MatrixT<T>>) -> Matrix<T> {
+        let m1 = self;
+        let m2 = rhs.as_ref();
+        if m1.dimensions().columns != m2.dimensions().rows {
+            panic!("Cannot multiply matrices {} and {} because of dimensions", m1.dimensions(), m2.dimensions());
+        }
+        let row_count = m1.dimensions().rows;
+        let col_count = m2.dimensions().columns;
+        let mut result = Matrix::<T>::new(row_count, col_count);
+        for row in 0..row_count {
+            for col in 0..col_count {
+                // result[row][col] = m1.row_iter(row).zip(m2.col_iter(col))
+                //     .map(|pair| *pair.0 * *pair.1)
+                //     .sum();
+                let mut sum = T::default();
+                for i in 0..m1.dimensions().columns {
+                    sum += *m1.elm(row, i) * *m2.elm(i, col);
+                }
+                result[row][col] = sum;
+            }
+        }
+        result
+    }
 }
 
 /// Matrix with arithmetic operations.
@@ -498,6 +522,31 @@ mod tests {
         product[1][1] = 22;
 
         assert_eq!(product, a * b);
+    }
+
+    #[test]
+    fn multiply2() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        let mut b = Matrix::new( 4, 2);
+        b[0][0] = 1;
+        b[0][1] = 2;
+        b[1][0] = 3;
+        b[1][1] = 4;
+
+        println!("{} {}", a, b);
+
+        let mut product = Matrix::new( 3, 2);
+        product[0][0] = 7;
+        product[0][1] = 10;
+        product[1][0] = 15;
+        product[1][1] = 22;
+
+        assert_eq!(product, a.mat_mul(&b));
     }
 
     #[test]

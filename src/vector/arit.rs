@@ -68,30 +68,6 @@ impl<T> Mul for &Vector<T>
     }
 }
 
-// pub trait VectorProduct<T>
-//     where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default + 'static {
-//
-//     fn vec_prod(self, rhs: Self) -> T;
-// }
-//
-// impl<T, R: AsRef<dyn VectorT<T>>> VectorProduct<T> for &R
-//     where T: Copy + PartialEq + AddAssign + Mul<Output=T> + Default + 'static
-// {
-//
-//     fn vec_prod(self, rhs: Self) -> T {
-//         let v1 = self.as_ref();
-//         let v2 = rhs.as_ref();
-//         if v1.len() != v2.len() {
-//             panic!("Vector 1 length {} not equal to vector 2 length {}", v1.len(), v2.len())
-//         }
-//         let mut sum = T::default();
-//         for i in 0..v1.len() {
-//             sum += v1[i] * v2[i];
-//         }
-//         sum
-//     }
-// }
-
 impl<T> Mul<Vector<T>> for Matrix<T>
     where T: MatrixElement
 {

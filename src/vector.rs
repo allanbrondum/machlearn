@@ -284,21 +284,21 @@ mod tests {
         assert_eq!(8.5, Mul::mul(&a, &b));
     }
 
-    // #[test]
-    // fn mul3() {
-    //     let mut a = Vector::new( 2);
-    //     a[0] = 1.1;
-    //     a[1] = 2.1;
-    //
-    //     let mut b = Vector::new( 2);
-    //     b[0] = 2.;
-    //     b[1] = 3.;
-    //
-    //     assert_eq!(8.5, a.vec_prod(&b));
-    //     assert_eq!(8.5, (&a).vec_prod(&b));
-    //     assert_eq!(8.5, <&Vector<f64> as VectorProduct<f64>>::vec_prod(&a, &b));
-    //     assert_eq!(8.5, VectorProduct::vec_prod(&a, &b));
-    //     assert_eq!(8.5, VectorProduct::<f64>::vec_prod(&a, &b));
-    // }
+    #[test]
+    fn mul3() {
+        let mut a = Vector::new( 2);
+        a[0] = 1.1;
+        a[1] = 2.1;
+
+        let mut b = Vector::new( 2);
+        b[0] = 2.;
+        b[1] = 3.;
+
+        assert_eq!(8.5, a.vec_prod(&b));
+        assert_eq!(8.5, (&a).vec_prod(&b));
+        assert_eq!(8.5, <Vector<f64> as VectorT<f64>>::vec_prod(&a, &b));
+        assert_eq!(8.5, VectorT::vec_prod(&a, &b));
+        assert_eq!(8.5, VectorT::<f64>::vec_prod(&a, &b));
+    }
 
 }
