@@ -54,6 +54,14 @@ pub trait MatrixT<T>
         }
         result
     }
+
+    fn transpose(&self) -> TransposedMatrix<T>
+        where Self: Sized
+    {
+        TransposedMatrix {
+            matrix: self
+        }
+    }
 }
 
 /// Matrix with arithmetic operations.
@@ -282,7 +290,7 @@ impl<'a, T> AsRef<dyn MatrixT<T> + 'a> for Matrix<T>
     }
 }
 
-struct TransposedMatrix<'a, T> {
+pub struct TransposedMatrix<'a, T> {
     matrix: &'a dyn MatrixT<T>
 }
 
@@ -290,14 +298,15 @@ impl<'a, T> MatrixT<T> for TransposedMatrix<'a, T>
     where T: MatrixElement
 {
     fn dimensions(&self) -> MatrixDimensions {
+        let mdim = self.matrix.dimensions();
         MatrixDimensions {
-            rows: self.dimensions().columns,
-            columns: self.dimensions().rows
+            rows: mdim.columns,
+            columns: mdim.rows
         }
     }
 
     fn elm(&self, row: usize, col: usize) -> &T {
-        self.elm(col, row)
+        self.matrix.elm(col, row)
     }
 }
 
@@ -712,5 +721,29 @@ mod tests {
 
     }
 
+    #[test]
+    fn transpose() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
 
+        let t = a.transpose();
+
+        assert_eq!(MatrixDimensions{rows: 4, columns: 3}, t.dimensions());
+        assert_eq!(1, *t.elm(0, 0));
+        assert_eq!(2, *t.elm(1, 0));
+        assert_eq!(3, *t.elm(0, 1));
+        assert_eq!(4, *t.elm(1, 1));
+
+        let t2 = t.transpose();
+
+        assert_eq!(MatrixDimensions{rows: 3, columns: 4}, t2.dimensions());
+        assert_eq!(1, *t2.elm(0, 0));
+        assert_eq!(2, *t2.elm(0, 1));
+        assert_eq!(3, *t2.elm(1, 0));
+        assert_eq!(4, *t2.elm(1, 1));
+
+    }
 }
