@@ -7,7 +7,7 @@ use std::slice::Iter;
 
 use itertools::Itertools;
 
-use crate::matrix::{Matrix, MatrixElement};
+use crate::matrix::{Matrix, MatrixElement, MatrixT, MatrixDimensions};
 use crate::neuralnetwork::ampl;
 
 pub mod arit;
@@ -29,6 +29,13 @@ Index<usize, Output=T>
             sum += v1[i] * v2[i];
         }
         sum
+    }
+
+    fn as_matrix(&self) -> VectorAsMatrix<T>
+        where Self: Sized {
+        VectorAsMatrix {
+            vec: self
+        }
     }
 }
 
@@ -58,6 +65,28 @@ impl<T> VectorT<T> for Vector<T>
     }
 
 
+}
+
+pub struct VectorAsMatrix<'a, T> {
+    vec: &'a dyn VectorT<T>
+}
+
+impl<'a, T> MatrixT<T> for VectorAsMatrix<'a, T>
+    where T: MatrixElement
+{
+    fn dimensions(&self) -> MatrixDimensions {
+        MatrixDimensions {
+            rows: self.vec.len(),
+            columns: 1
+        }
+    }
+
+    fn elm(&self, row: usize, col: usize) -> &T {
+        if col != 0 {
+            panic!("The only valid column index is 0, was {}", col);
+        }
+        &self.vec[row]
+    }
 }
 
 impl<T> Vector<T>
@@ -301,4 +330,16 @@ mod tests {
         assert_eq!(8.5, VectorT::<f64>::vec_prod(&a, &b));
     }
 
+    #[test]
+    fn as_matrix() {
+        let mut a = Vector::new( 2);
+        a[0] = 1.1;
+        a[1] = 2.1;
+
+        let m = a.as_matrix();
+
+        assert_eq!(MatrixDimensions {rows: 2, columns: 1}, m.dimensions());
+        assert_eq!(1.1, *m.elm(0, 0));
+        assert_eq!(2.1, *m.elm(1, 0));
+    }
 }

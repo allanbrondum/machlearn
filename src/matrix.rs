@@ -62,6 +62,22 @@ pub trait MatrixT<T>
             matrix: self
         }
     }
+
+    fn row<'a>(&'a self, row: usize) -> RowVector<T>
+        where Self: Sized {
+        RowVector {
+            matrix: self,
+            row
+        }
+    }
+
+    fn col<'a>(&'a self, col: usize) -> ColVector<T>
+        where Self: Sized {
+        ColVector {
+            matrix: self,
+            col
+        }
+    }
 }
 
 /// Matrix with arithmetic operations.
@@ -75,8 +91,8 @@ pub struct Matrix<T>
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct MatrixDimensions {
-    rows: usize,
-    columns: usize
+    pub rows: usize,
+    pub columns: usize
 }
 
 struct ColIter<'a, T>
@@ -157,26 +173,12 @@ impl<T> Matrix<T>
     pub fn col_iter(&self, col: usize) -> impl Iterator<Item = &T> {
         ColIter::new(self, col)
     }
-
-    pub fn row<'a>(&'a self, row: usize) -> impl VectorT<T> + 'a {
-        RowVector {
-            matrix: &self,
-            row
-        }
-    }
-
-    pub fn col<'a>(&'a self, col: usize) -> impl VectorT<T> + 'a {
-        ColVector {
-            matrix: &self,
-            col
-        }
-    }
 }
 
-struct ColVector<'a, T>
+pub struct ColVector<'a, T>
     where T: MatrixElement
 {
-    matrix: &'a Matrix<T>,
+    matrix: &'a dyn MatrixT<T>,
     col: usize
 }
 
@@ -186,7 +188,7 @@ impl<'a, T> Index<usize> for ColVector<'a, T>
     type Output = T;
 
     fn index(&self, index: usize) -> &T {
-        &self.matrix[index][self.col]
+        &self.matrix.elm(index,self.col)
     }
 }
 
@@ -194,14 +196,14 @@ impl<'a, T> VectorT<T> for ColVector<'a, T>
     where T: MatrixElement
 {
     fn len(&self) -> usize {
-        self.matrix.row_count()
+        self.matrix.dimensions().rows
     }
 }
 
-struct RowVector<'a, T>
+pub struct RowVector<'a, T>
     where T: MatrixElement
 {
-    matrix: &'a Matrix<T>,
+    matrix: &'a dyn MatrixT<T>,
     row: usize
 }
 
@@ -211,7 +213,7 @@ impl<'a, T> Index<usize> for RowVector<'a, T>
     type Output = T;
 
     fn index(&self, index: usize) -> &T {
-        &self.matrix[self.row][index]
+        &self.matrix.elm(self.row, index)
     }
 }
 
@@ -219,7 +221,7 @@ impl<'a, T> VectorT<T> for RowVector<'a, T>
     where T: MatrixElement
 {
     fn len(&self) -> usize {
-        self.matrix.column_count()
+        self.matrix.dimensions().columns
     }
 }
 
