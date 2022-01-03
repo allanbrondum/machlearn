@@ -107,23 +107,6 @@ impl<T> Mul<Matrix<T>> for Vector<T>
     }
 }
 
-// impl<T, V: VectorT<T>> Mul<&Matrix<T>> for &V
-//     where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + Sum
-// {
-//     type Output = Vector<T>;
-//
-//     fn mul(self, rhs: &Matrix<T>) -> Vector<T> {
-//         if self.len() != rhs.row_count() {
-//             panic!("Cannot multiply vector {} with matrix {} because of dimensions", self.len(), rhs.dimensions());
-//         }
-//         let mut result = Vector::<T>::new(rhs.column_count());
-//         for column in 0..rhs.column_count() {
-//             result[column] = &rhs.col(column) * self;
-//         }
-//         result
-//     }
-// }
-
 impl<T> Mul<&Matrix<T>> for &Vector<T>
     where T: MatrixElement
 {
