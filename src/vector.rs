@@ -150,6 +150,14 @@ impl<'a, T> AsRef<dyn VectorT<T> + 'a> for Vector<T>
     }
 }
 
+impl<'a, T> AsRef<dyn MatrixT<T> + 'a> for VectorAsMatrix<'a, T>
+    where T: MatrixElement
+{
+
+    fn as_ref(&self) -> &(dyn MatrixT<T> + 'a) {
+        self
+    }
+}
 
 
 #[cfg(test)]

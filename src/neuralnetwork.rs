@@ -117,11 +117,19 @@ impl Network {
         for connector_index in 0..self.connectors.len() {
             let connector = &mut self.connectors[connector_index];
             let layer1 = &self.layers[connector_index];
-            for i in 0..connector.weights.row_count() {
-                for j in 0..connector.weights.column_count() {
-                    connector.weights[i][j] += - ny * layer1.state[j] * connector.back_propagation_delta[i];
-                }
-            }
+
+            let deltam = connector.back_propagation_delta.as_matrix();
+            let statem = layer1.state.as_matrix();
+            let statemt = statem.transpose();
+            let mut tmp = deltam.mat_mul(&statemt);
+            tmp *= -ny;
+            connector.weights += tmp;
+
+            // for i in 0..connector.weights.row_count() {
+            //     for j in 0..connector.weights.column_count() {
+            //         connector.weights[i][j] += - ny * layer1.state[j] * connector.back_propagation_delta[i];
+            //     }
+            // }
         }
     }
 }

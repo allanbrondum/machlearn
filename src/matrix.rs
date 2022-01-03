@@ -31,7 +31,7 @@ pub trait MatrixT<T>
 
     fn elm(&self, row: usize, col:usize) -> &T;
 
-    fn mat_mul(&self, rhs: &dyn AsRef<dyn MatrixT<T>>) -> Matrix<T> {
+    fn mat_mul<'a>(&'a self, rhs: &'a dyn AsRef<dyn MatrixT<T> + 'a>) -> Matrix<T> {
         let m1 = self;
         let m2 = rhs.as_ref();
         if m1.dimensions().columns != m2.dimensions().rows {
@@ -295,6 +295,16 @@ impl<'a, T> AsRef<dyn MatrixT<T> + 'a> for Matrix<T>
 pub struct TransposedMatrix<'a, T> {
     matrix: &'a dyn MatrixT<T>
 }
+
+impl<'a, T> AsRef<dyn MatrixT<T> + 'a> for TransposedMatrix<'a, T>
+    where T: MatrixElement
+{
+
+    fn as_ref(&self) -> &(dyn MatrixT<T> + 'a) {
+        self
+    }
+}
+
 
 impl<'a, T> MatrixT<T> for TransposedMatrix<'a, T>
     where T: MatrixElement
