@@ -748,4 +748,23 @@ mod tests {
         assert_eq!(4, *t2.elm(1, 1));
 
     }
+
+    #[test]
+    fn multiply_scalar() {
+        let mut a = Matrix::new( 3, 4);
+        a[0][0] = 1;
+        a[0][1] = 2;
+        a[1][0] = 3;
+        a[1][1] = 4;
+
+        let mut result = Matrix::new( 3, 4);
+        result[0][0] = 2;
+        result[0][1] = 4;
+        result[1][0] = 6;
+        result[1][1] = 8;
+
+        a *= 2;
+
+        assert_eq!(result, a);
+    }
 }

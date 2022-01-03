@@ -1,4 +1,4 @@
-use std::ops::{Neg, Add, AddAssign, Sub, SubAssign, Mul};
+use std::ops::{Neg, Add, AddAssign, Sub, SubAssign, Mul, MulAssign};
 use crate::matrix::{Matrix, MatrixT, MatrixElement};
 use std::iter::Sum;
 
@@ -53,6 +53,17 @@ impl<T> SubAssign for Matrix<T>
     fn sub_assign(&mut self, other: Self) {
         for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
             *elm_pair.0 -= *elm_pair.1;
+        }
+    }
+}
+
+impl<T> MulAssign<T> for Matrix<T>
+    where T: MatrixElement {
+
+    fn mul_assign(&mut self, rhs: T) {
+        let mut ret = self;
+        for elm in &mut ret.elements {
+            *elm = rhs * *elm;
         }
     }
 }

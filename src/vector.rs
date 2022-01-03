@@ -342,4 +342,20 @@ mod tests {
         assert_eq!(1.1, *m.elm(0, 0));
         assert_eq!(2.1, *m.elm(1, 0));
     }
+
+    #[test]
+    fn mul_scalar() {
+        let mut a = Vector::new( 2);
+        a[0] = 1.1;
+        a[1] = 2.1;
+
+        let mut result = Vector::new( 2);
+        result[0] = 2.2;
+        result[1] = 4.2;
+
+        a *= 2.;
+
+        assert_eq!(result, a);
+
+    }
 }
