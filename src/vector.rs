@@ -100,8 +100,6 @@ impl<T> Display for Vector<T>
     }
 }
 
-
-
 impl<'a, T> AsRef<dyn VectorT<T> + 'a> for Vector<T>
     where T: Clone + PartialEq + 'a {
 

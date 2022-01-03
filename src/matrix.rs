@@ -8,6 +8,14 @@ use crate::vector::{Vector, VectorT};
 
 pub mod arit;
 
+pub trait MatrixT<T> :
+Index<usize, Output=[T]>
+{
+    fn dimensions(&self) -> MatrixDimensions;
+
+    fn elm(&self, row: usize, col:usize) -> &T;
+}
+
 /// Matrix with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Matrix<T>
@@ -70,6 +78,19 @@ impl<T> Matrix<T>
     }
 }
 
+
+impl<T> MatrixT<T> for Matrix<T>
+    where T: Clone + PartialEq
+{
+    fn dimensions(&self) -> MatrixDimensions {
+        self.dimensions
+    }
+
+    fn elm(&self, row: usize, col: usize) -> &T {
+        &self[row][col]
+    }
+}
+
 impl<T> Matrix<T>
     where T: Clone + PartialEq
 {
@@ -79,10 +100,6 @@ impl<T> Matrix<T>
 
     pub fn row_count(&self) -> usize {
         self.dimensions.rows
-    }
-
-    pub fn dimensions(&self) -> MatrixDimensions {
-        self.dimensions
     }
 
     pub fn row_iter(&self, row: usize) -> impl Iterator<Item = &T> {
@@ -216,6 +233,13 @@ impl<T> Matrix<T>
     }
 }
 
+impl<'a, T> AsRef<dyn MatrixT<T> + 'a> for Matrix<T>
+    where T: Clone + PartialEq + 'a {
+
+    fn as_ref(&self) -> &(dyn MatrixT<T> + 'a) {
+        self
+    }
+}
 
 #[cfg(test)]
 mod tests {

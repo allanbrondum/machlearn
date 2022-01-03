@@ -1,6 +1,6 @@
 use std::ops::{Neg, AddAssign, Sub, SubAssign, Add, Mul};
 use crate::vector::{Vector, VectorT};
-use crate::matrix::Matrix;
+use crate::matrix::{Matrix, MatrixT};
 use std::iter::Sum;
 
 
