@@ -96,14 +96,9 @@ impl<T> Matrix<T>
         let mut result = Matrix::<T>::new(row_count, col_count);
         for row in 0..row_count {
             for col in 0..col_count {
-                // result[row][col] = m1.row_iter(row).zip(m2.col_iter(col))
-                //     .map(|pair| *pair.0 * *pair.1)
-                //     .sum();
-                let mut sum = T::default();
-                for i in 0..m1.dimensions().columns {
-                    sum += *m1.elm(row, i) * *m2.elm(i, col);
-                }
-                result[(row,col)] = sum;
+                result[(row, col)] = m1.row_iter(row).zip(m2.col_iter(col))
+                    .map(|pair| *pair.0 * *pair.1)
+                    .sum();
             }
         }
         result
@@ -154,42 +149,6 @@ pub struct MatrixDimensions {
     pub rows: usize,
     pub columns: usize
 }
-//
-// struct ColIter<'a, T>
-//     where T: MatrixElement
-// {
-//     matrix: &'a Matrix<T>,
-//     column: usize,
-//     row: usize
-// }
-//
-// impl<T> ColIter<'_, T>
-//     where T: MatrixElement
-// {
-//     fn new(matrix: &Matrix<T>, column: usize) -> ColIter<T> {
-//         ColIter {
-//             matrix,
-//             column,
-//             row: 0
-//         }
-//     }
-// }
-//
-// impl<'a, T> Iterator for ColIter<'a, T>
-//     where T: MatrixElement
-// {
-//     type Item = &'a T;
-//
-//     fn next(&mut self) -> Option<Self::Item> {
-//         if self.row == self.matrix.row_count() {
-//             None
-//         } else {
-//             let val = &self.matrix.elements[self.row * self.matrix.column_count() + self.column];
-//             self.row += 1;
-//             Some(val)
-//         }
-//     }
-// }
 
 impl<T> Matrix<T>
     where T: MatrixElement
