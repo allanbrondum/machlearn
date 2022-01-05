@@ -12,33 +12,6 @@ use crate::neuralnetwork::ampl;
 
 pub mod arit;
 
-pub trait VectorT<T> :
-Index<usize, Output=T>
-    where T: MatrixElement
-{
-    fn len(&self) -> usize;
-
-    fn vec_prod(&self, rhs: &dyn AsRef<dyn VectorT<T>>) -> T {
-        let v1 = self;
-        let v2 = rhs.as_ref();
-        if v1.len() != v2.len() {
-            panic!("Vector 1 length {} not equal to vector 2 length {}", v1.len(), v2.len())
-        }
-        let mut sum = T::default();
-        for i in 0..v1.len() {
-            sum += v1[i] * v2[i];
-        }
-        sum
-    }
-
-    fn as_matrix(&self) -> VectorAsMatrix<T>
-        where Self: Sized {
-        VectorAsMatrix {
-            vec: self
-        }
-    }
-}
-
 /// Vector with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Vector<T>
@@ -50,53 +23,41 @@ pub struct Vector<T>
 impl<T> Vector<T>
     where T: MatrixElement
 {
-    pub fn new(len: usize) -> Vector<T> {
-        Vector {
-            elements: vec![Default::default(); len]
-        }
-    }
-}
-
-impl<T> VectorT<T> for Vector<T>
-    where T: MatrixElement
-{
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.elements.len()
     }
 
-
-}
-
-pub struct VectorAsMatrix<'a, T> {
-    vec: &'a dyn VectorT<T>
-}
-
-impl<'a, T> MatrixT<T> for VectorAsMatrix<'a, T>
-    where T: MatrixElement
-{
-    fn dimensions(&self) -> MatrixDimensions {
-        MatrixDimensions {
-            rows: self.vec.len(),
-            columns: 1
+    pub fn vec_prod(&self, rhs: &Vector<T>) -> T {
+        let v1 = self;
+        let v2 = rhs;
+        if v1.len() != v2.len() {
+            panic!("Vector 1 length {} not equal to vector 2 length {}", v1.len(), v2.len())
         }
+        let mut sum = T::default();
+        for i in 0..v1.len() {
+            sum += v1[i] * v2[i];
+        }
+        sum
     }
 
-    fn elm(&self, row: usize, col: usize) -> &T {
-        if col != 0 {
-            panic!("The only valid column index is 0, was {}", col);
-        }
-        &self.vec[row]
+    pub fn iter(&self) -> impl Iterator<Item=&T> {
+        self.elements.iter()
+    }
+
+    pub fn to_matrix(&self) -> Matrix<T>
+        where Self: Sized {
+        todo!("implement")
     }
 }
 
 impl<T> Vector<T>
     where T: MatrixElement
 {
-
-    pub fn iter(&self) -> impl Iterator<Item=&T> {
-        self.elements.iter()
+    pub fn new(len: usize) -> Vector<T> {
+        Vector {
+            elements: vec![Default::default(); len]
+        }
     }
-
 }
 
 impl<T> Vector<T>
@@ -141,24 +102,6 @@ impl<T> Display for Vector<T>
         std::fmt::Result::Ok(())
     }
 }
-
-impl<'a, T> AsRef<dyn VectorT<T> + 'a> for Vector<T>
-    where T: MatrixElement + 'a {
-
-    fn as_ref(&self) -> &(dyn VectorT<T> + 'a) {
-        self
-    }
-}
-
-impl<'a, T> AsRef<dyn MatrixT<T> + 'a> for VectorAsMatrix<'a, T>
-    where T: MatrixElement
-{
-
-    fn as_ref(&self) -> &(dyn MatrixT<T> + 'a) {
-        self
-    }
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -322,7 +265,7 @@ mod tests {
     }
 
     #[test]
-    fn mul3() {
+    fn vec_prod() {
         let mut a = Vector::new( 2);
         a[0] = 1.1;
         a[1] = 2.1;
@@ -332,10 +275,6 @@ mod tests {
         b[1] = 3.;
 
         assert_eq!(8.5, a.vec_prod(&b));
-        assert_eq!(8.5, (&a).vec_prod(&b));
-        assert_eq!(8.5, <Vector<f64> as VectorT<f64>>::vec_prod(&a, &b));
-        assert_eq!(8.5, VectorT::vec_prod(&a, &b));
-        assert_eq!(8.5, VectorT::<f64>::vec_prod(&a, &b));
     }
 
     #[test]
@@ -344,7 +283,7 @@ mod tests {
         a[0] = 1.1;
         a[1] = 2.1;
 
-        let m = a.as_matrix();
+        let m = a.to_matrix();
 
         assert_eq!(MatrixDimensions {rows: 2, columns: 1}, m.dimensions());
         assert_eq!(1.1, *m.elm(0, 0));

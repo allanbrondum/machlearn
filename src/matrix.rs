@@ -4,11 +4,23 @@ use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAss
 use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
 use std::iter::Sum;
-use crate::vector::{Vector, VectorT};
+use crate::vector::Vector;
 
 pub mod arit;
 
-pub trait MatrixElement: Copy + PartialEq + AddAssign + Add<Output=Self> + Mul<Output=Self> + Default + Display + Neg<Output=Self> + SubAssign + Sub<Output=Self> + Sum + 'static {
+pub trait MatrixElement:
+Copy +
+PartialEq +
+AddAssign +
+Add<Output=Self> +
+Mul<Output=Self> +
+Default +
+Display +
+Neg<Output=Self> +
+SubAssign +
+Sub<Output=Self> +
+Sum +
+'static {
 
 }
 
@@ -62,22 +74,22 @@ pub trait MatrixT<T>
             matrix: self
         }
     }
-
-    fn row<'a>(&'a self, row: usize) -> RowVector<T>
-        where Self: Sized {
-        RowVector {
-            matrix: self,
-            row
-        }
-    }
-
-    fn col<'a>(&'a self, col: usize) -> ColVector<T>
-        where Self: Sized {
-        ColVector {
-            matrix: self,
-            col
-        }
-    }
+    //
+    // fn row<'a>(&'a self, row: usize) -> RowVector<T>
+    //     where Self: Sized {
+    //     RowVector {
+    //         matrix: self,
+    //         row
+    //     }
+    // }
+    //
+    // fn col<'a>(&'a self, col: usize) -> ColVector<T>
+    //     where Self: Sized {
+    //     ColVector {
+    //         matrix: self,
+    //         col
+    //     }
+    // }
 }
 
 /// Matrix with arithmetic operations.
@@ -172,56 +184,6 @@ impl<T> Matrix<T>
 
     pub fn col_iter(&self, col: usize) -> impl Iterator<Item = &T> {
         ColIter::new(self, col)
-    }
-}
-
-pub struct ColVector<'a, T>
-    where T: MatrixElement
-{
-    matrix: &'a dyn MatrixT<T>,
-    col: usize
-}
-
-impl<'a, T> Index<usize> for ColVector<'a, T>
-    where T: MatrixElement
-{
-    type Output = T;
-
-    fn index(&self, index: usize) -> &T {
-        &self.matrix.elm(index,self.col)
-    }
-}
-
-impl<'a, T> VectorT<T> for ColVector<'a, T>
-    where T: MatrixElement
-{
-    fn len(&self) -> usize {
-        self.matrix.dimensions().rows
-    }
-}
-
-pub struct RowVector<'a, T>
-    where T: MatrixElement
-{
-    matrix: &'a dyn MatrixT<T>,
-    row: usize
-}
-
-impl<'a, T> Index<usize> for RowVector<'a, T>
-    where T: MatrixElement
-{
-    type Output = T;
-
-    fn index(&self, index: usize) -> &T {
-        &self.matrix.elm(self.row, index)
-    }
-}
-
-impl<'a, T> VectorT<T> for RowVector<'a, T>
-    where T: MatrixElement
-{
-    fn len(&self) -> usize {
-        self.matrix.dimensions().columns
     }
 }
 
@@ -685,38 +647,38 @@ mod tests {
         assert_eq!(product, &b * &a);
     }
 
-    #[test]
-    fn col_vector() {
-        let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
-
-        let b = a.col(1);
-
-        assert_eq!(3, b.len());
-        assert_eq!(2, b[0]);
-        assert_eq!(4, b[1]);
-        assert_eq!(0, b[2]);
-    }
-
-    #[test]
-    fn row_vector() {
-        let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
-
-        let b = a.row(1);
-
-        assert_eq!(4, b.len());
-        assert_eq!(3, b[0]);
-        assert_eq!(4, b[1]);
-        assert_eq!(0, b[2]);
-        assert_eq!(0, b[3]);
-    }
+    // #[test]
+    // fn col_vector() {
+    //     let mut a = Matrix::new( 3, 4);
+    //     a[0][0] = 1;
+    //     a[0][1] = 2;
+    //     a[1][0] = 3;
+    //     a[1][1] = 4;
+    //
+    //     let b = a.col(1);
+    //
+    //     assert_eq!(3, b.len());
+    //     assert_eq!(2, b[0]);
+    //     assert_eq!(4, b[1]);
+    //     assert_eq!(0, b[2]);
+    // }
+    //
+    // #[test]
+    // fn row_vector() {
+    //     let mut a = Matrix::new( 3, 4);
+    //     a[0][0] = 1;
+    //     a[0][1] = 2;
+    //     a[1][0] = 3;
+    //     a[1][1] = 4;
+    //
+    //     let b = a.row(1);
+    //
+    //     assert_eq!(4, b.len());
+    //     assert_eq!(3, b[0]);
+    //     assert_eq!(4, b[1]);
+    //     assert_eq!(0, b[2]);
+    //     assert_eq!(0, b[3]);
+    // }
 
     #[test]
     fn elm() {

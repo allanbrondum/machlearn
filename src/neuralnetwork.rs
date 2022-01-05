@@ -4,7 +4,7 @@ use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAss
 use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
 use std::iter::Sum;
-use crate::vector::{Vector, VectorT};
+use crate::vector::{Vector};
 use crate::matrix::{Matrix, MatrixT};
 
 pub type ampl = f64;
@@ -118,8 +118,8 @@ impl Network {
             let connector = &mut self.connectors[connector_index];
             let layer1 = &self.layers[connector_index];
 
-            let deltam = connector.back_propagation_delta.as_matrix();
-            let statem = layer1.state.as_matrix();
+            let deltam = connector.back_propagation_delta.clone().to_matrix();
+            let statem = layer1.state.clone().to_matrix();
             let statemt = statem.transpose();
             let mut tmp = deltam.mat_mul(&statemt);
             tmp *= -ny;
