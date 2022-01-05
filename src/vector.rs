@@ -33,25 +33,22 @@ impl<T> Vector<T>
         if v1.len() != v2.len() {
             panic!("Vector 1 length {} not equal to vector 2 length {}", v1.len(), v2.len())
         }
-        todo!("reimplement");
-        let mut sum = T::default();
-        for i in 0..v1.len() {
-            sum += v1[i] * v2[i];
-        }
-        sum
+        self.iter().zip(rhs.iter())
+            .map(|pair| *pair.0 * *pair.1)
+            .sum()
     }
 
     pub fn iter(&self) -> impl Iterator<Item=&T> {
         self.elements.iter()
     }
 
-    pub fn to_matrix(&self) -> Matrix<T>
-        where Self: Sized {
-        todo!("implement")
+    pub fn to_matrix(self) -> Matrix<T> {
+        let len = self.len();
+        Matrix::new_from_elements(len, 1, self.elements,
+                                  1, len)
     }
 
-    pub fn as_matrix(&self) -> Matrix<T>
-        where Self: Sized {
+    pub fn as_matrix(&self) -> Matrix<T> {
         todo!("implement")
     }
 }
@@ -284,7 +281,7 @@ mod tests {
     }
 
     #[test]
-    fn as_matrix() {
+    fn to_matrix() {
         let mut a = Vector::new( 2);
         a[0] = 1.1;
         a[1] = 2.1;

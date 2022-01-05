@@ -202,6 +202,16 @@ impl<T> Matrix<T>
             col_stride: 1
         }
     }
+
+    pub fn new_from_elements(rows: usize, columns: usize, elements: Vec<T>,
+                             row_stride: usize, col_stride: usize) -> Matrix<T> {
+        Matrix {
+            dimensions: MatrixDimensions { rows, columns },
+            elements,
+            row_stride,
+            col_stride
+        }
+    }
 }
 
 impl<T> Index<(usize, usize)> for Matrix<T>
