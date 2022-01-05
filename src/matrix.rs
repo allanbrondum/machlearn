@@ -42,7 +42,9 @@ pub struct Matrix<T>
     where T: MatrixElement
 {
     dimensions: MatrixDimensions,
-    elements: Vec<T>
+    elements: Vec<T>,
+    row_stride: usize,
+    col_stride: usize
 }
 
 impl<T> Matrix<T>
@@ -53,7 +55,7 @@ impl<T> Matrix<T>
     }
 
     fn lin_index(&self, row: usize, col:usize) -> usize {
-        row + col * self.dimensions.columns
+        row * self.row_stride + col * self.col_stride
     }
 
     pub fn elm(&self, row: usize, col:usize) -> &T {
@@ -101,7 +103,7 @@ impl<T> Matrix<T>
                 for i in 0..m1.dimensions().columns {
                     sum += *m1.elm(row, i) * *m2.elm(i, col);
                 }
-                result[row][col] = sum;
+                result[(row,col)] = sum;
             }
         }
         result
@@ -110,7 +112,21 @@ impl<T> Matrix<T>
     pub fn transpose(self) -> Matrix<T>
         where Self: Sized
     {
-        todo!("implement");
+        Matrix {
+            dimensions: MatrixDimensions {
+                columns: self.dimensions.rows,
+                rows: self.dimensions.columns
+            },
+            elements: self.elements,
+            row_stride: self.col_stride,
+            col_stride: self.row_stride
+        }
+    }
+
+    pub fn as_transpose(self) -> Matrix<T>
+        where Self: Sized
+    {
+        todo!("implement")
     }
 
     //
@@ -181,27 +197,30 @@ impl<T> Matrix<T>
     pub fn new(rows: usize, columns: usize) -> Matrix<T> {
         Matrix {
             dimensions: MatrixDimensions { rows, columns },
-            elements: vec![Default::default(); rows * columns]
+            elements: vec![Default::default(); rows * columns],
+            row_stride: columns,
+            col_stride: 1
         }
     }
 }
 
-impl<T> Index<usize> for Matrix<T>
+impl<T> Index<(usize, usize)> for Matrix<T>
     where T: MatrixElement
 {
-    type Output = [T];
+    type Output = T;
 
-    fn index(&self, row_index: usize) -> &[T] {
-        &self.elements[row_index * self.column_count()..(row_index + 1) * self.column_count()]
+    fn index(&self, row_col_index: (usize, usize)) -> &T {
+        let lin_index = self.lin_index(row_col_index.0, row_col_index.1);
+        &self.elements[lin_index]
     }
 }
 
-impl<T> IndexMut<usize> for Matrix<T>
+impl<T> IndexMut<(usize, usize)> for Matrix<T>
     where T: MatrixElement
 {
-    fn index_mut(&mut self, row_index: usize) -> &mut [T] {
-        let col_count = self.column_count();
-        &mut self.elements[row_index * col_count..(row_index + 1) * col_count]
+    fn index_mut(&mut self, row_col_index: (usize, usize)) -> &mut T {
+        let lin_index = self.lin_index(row_col_index.0, row_col_index.1);
+        & mut self.elements[lin_index]
     }
 }
 
@@ -212,7 +231,7 @@ impl<T> Display for Matrix<T>
         for row in 0..self.row_count() {
             f.write_str("|")?;
             for col in 0..self.column_count() {
-                write!(f, "{}", self[row][col])?;
+                write!(f, "{}", self[(row,col)])?;
                 if col != self.column_count() - 1 {
                     f.write_str(" ")?;
                 }
@@ -244,6 +263,45 @@ impl<T> Matrix<T>
     }
 }
 
+// pub struct StrideSlice<'a, T> {
+//     slice: &'a [T],
+//     stride: usize
+// }
+//
+// pub struct StrideSliceMut<'a, T> {
+//     slice: &'a mut [T],
+//     stride: usize
+// }
+//
+// impl<'a, T> Index<usize> for StrideSlice<'a, T>
+//     where T: MatrixElement
+// {
+//     type Output = T;
+//
+//     fn index(&self, index: usize) -> &T {
+//         &self.slice[index * self.stride]
+//     }
+// }
+//
+// impl<'a, T> Index<usize> for StrideSliceMut<'a, T>
+//     where T: MatrixElement
+// {
+//     type Output = T;
+//
+//     fn index(&self, index: usize) -> &T {
+//         &self.slice[index * self.stride]
+//     }
+// }
+//
+// impl<'a, T> IndexMut<usize> for StrideSliceMut<'a, T>
+//     where T: MatrixElement
+// {
+//     fn index_mut(&mut self, index: usize) -> &mut T {
+//         let lin_index = index * self.stride;
+//         &mut self.slice[lin_index]
+//     }
+// }
+
 #[cfg(test)]
 mod tests {
     use crate::matrix::*;
@@ -254,9 +312,9 @@ mod tests {
         let mut b = Matrix::new(3, 2);
         let mut c = Matrix::new(2, 3);
         let mut d = Matrix::new(3, 2);
-        d[0][0] = 1.;
+        d[(0,0)] = 1.;
         let mut e = Matrix::new(3, 2);
-        e[0][0] = 1.;
+        e[(0,0)] = 1.;
 
         assert_eq!(a, a); // same instance
         assert_eq!(a, b); // equal
@@ -268,133 +326,189 @@ mod tests {
     #[test]
     fn index() {
         let mut a = Matrix::new( 3, 2);
-        a[0][0] = 1.1;
-        a[1][0] = 2.1;
-        a[0][1] = 3.1;
-        a[2][1] = 4.1;
+        a[(0,0)] = 1.1;
+        a[(1,0)] = 2.1;
+        a[(0,1)] = 3.1;
+        a[(2,1)] = 4.1;
 
-        assert_eq!(1.1, a[0][0]);
-        assert_eq!(2.1, a[1][0]);
-        assert_eq!(3.1, a[0][1]);
-        assert_eq!(4.1, a[2][1]);
+        assert_eq!(1.1, a[(0,0)]);
+        assert_eq!(2.1, a[(1,0)]);
+        assert_eq!(3.1, a[(0,1)]);
+        assert_eq!(4.1, a[(2,1)]);
+
+    }
+
+    #[test]
+    fn matrix_with_col_stride() {
+        let mut a = Matrix {
+            dimensions: MatrixDimensions { rows: 3, columns: 2},
+            elements: vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1),
+            row_stride: 1,
+            col_stride: 3
+        };
+        a[(0,0)] = 1.1;
+        a[(1,0)] = 2.1;
+        a[(0,1)] = 3.1;
+        a[(2,1)] = 4.1;
+
+        assert_eq!(1.1, a[(0,0)]);
+        assert_eq!(2.1, a[(1,0)]);
+        assert_eq!(0.0, a[(2,0)]);
+        assert_eq!(3.1, a[(0,1)]);
+        assert_eq!(0.0, a[(1,1)]);
+        assert_eq!(4.1, a[(2,1)]);
+        assert_eq!(1.1, *a.elm(0,0));
+        assert_eq!(2.1, *a.elm(1,0));
+        assert_eq!(0.0, *a.elm(2,0));
+        assert_eq!(3.1, *a.elm(0,1));
+        assert_eq!(0.0, *a.elm(1,1));
+        assert_eq!(4.1, *a.elm(2,1));
+
+    }
+
+    #[test]
+    fn matrix_with_row_stride() {
+        let mut a = Matrix {
+            dimensions: MatrixDimensions { rows: 3, columns: 2},
+            elements: vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1),
+            row_stride: 2,
+            col_stride: 1
+        };
+        a[(0,0)] = 1.1;
+        a[(1,0)] = 2.1;
+        a[(0,1)] = 3.1;
+        a[(2,1)] = 4.1;
+
+        assert_eq!(1.1, a[(0,0)]);
+        assert_eq!(2.1, a[(1,0)]);
+        assert_eq!(0.0, a[(2,0)]);
+        assert_eq!(3.1, a[(0,1)]);
+        assert_eq!(0.0, a[(1,1)]);
+        assert_eq!(4.1, a[(2,1)]);
+        assert_eq!(1.1, *a.elm(0,0));
+        assert_eq!(2.1, *a.elm(1,0));
+        assert_eq!(0.0, *a.elm(2,0));
+        assert_eq!(3.1, *a.elm(0,1));
+        assert_eq!(0.0, *a.elm(1,1));
+        assert_eq!(4.1, *a.elm(2,1));
 
     }
 
     #[test]
     fn neg() {
         let mut a = Matrix::new( 3, 2);
-        a[0][0] = 1.1;
-        a[1][0] = 2.1;
-        a[0][1] = 3.1;
-        a[2][1] = 4.1;
+        a[(0,0)] = 1.1;
+        a[(1,0)] = 2.1;
+        a[(0,1)] = 3.1;
+        a[(2,1)] = 4.1;
 
         let a = -a;
 
-        assert_eq!(-1.1, a[0][0]);
-        assert_eq!(-2.1, a[1][0]);
-        assert_eq!(-3.1, a[0][1]);
-        assert_eq!(-4.1, a[2][1]);
+        assert_eq!(-1.1, a[(0,0)]);
+        assert_eq!(-2.1, a[(1,0)]);
+        assert_eq!(-3.1, a[(0,1)]);
+        assert_eq!(-4.1, a[(2,1)]);
 
     }
 
     #[test]
     fn add() {
         let mut a = Matrix::new( 3, 2);
-        a[0][0] = 1.1;
-        a[1][0] = 2.1;
-        a[0][1] = 3.1;
-        a[2][1] = 4.1;
+        a[(0,0)] = 1.1;
+        a[(1,0)] = 2.1;
+        a[(0,1)] = 3.1;
+        a[(2,1)] = 4.1;
         let mut b = Matrix::new( 3, 2);
-        b[0][0] = 10.;
-        b[1][0] = 20.;
-        b[0][1] = 30.;
-        b[2][1] = 40.;
+        b[(0,0)] = 10.;
+        b[(1,0)] = 20.;
+        b[(0,1)] = 30.;
+        b[(2,1)] = 40.;
 
         let a = a + b;
 
-        assert_eq!(1.1 + 10., a[0][0]);
-        assert_eq!(2.1 + 20., a[1][0]);
-        assert_eq!(3.1 + 30., a[0][1]);
-        assert_eq!(4.1 + 40., a[2][1]);
-        assert_eq!(0., a[1][1]);
+        assert_eq!(1.1 + 10., a[(0,0)]);
+        assert_eq!(2.1 + 20., a[(1,0)]);
+        assert_eq!(3.1 + 30., a[(0,1)]);
+        assert_eq!(4.1 + 40., a[(2,1)]);
+        assert_eq!(0., a[(1,1)]);
 
     }
 
     #[test]
     fn add_assign() {
         let mut a = Matrix::new( 3, 2);
-        a[0][0] = 1.1;
-        a[1][0] = 2.1;
-        a[0][1] = 3.1;
-        a[2][1] = 4.1;
+        a[(0,0)] = 1.1;
+        a[(1,0)] = 2.1;
+        a[(0,1)] = 3.1;
+        a[(2,1)] = 4.1;
         let mut b = Matrix::new( 3, 2);
-        b[0][0] = 10.;
-        b[1][0] = 20.;
-        b[0][1] = 30.;
-        b[2][1] = 40.;
+        b[(0,0)] = 10.;
+        b[(1,0)] = 20.;
+        b[(0,1)] = 30.;
+        b[(2,1)] = 40.;
 
         a += b;
 
-        assert_eq!(1.1 + 10., a[0][0]);
-        assert_eq!(2.1 + 20., a[1][0]);
-        assert_eq!(3.1 + 30., a[0][1]);
-        assert_eq!(4.1 + 40., a[2][1]);
-        assert_eq!(0., a[1][1]);
+        assert_eq!(1.1 + 10., a[(0,0)]);
+        assert_eq!(2.1 + 20., a[(1,0)]);
+        assert_eq!(3.1 + 30., a[(0,1)]);
+        assert_eq!(4.1 + 40., a[(2,1)]);
+        assert_eq!(0., a[(1,1)]);
 
     }
 
     #[test]
     fn sub() {
         let mut a = Matrix::new( 3, 2);
-        a[0][0] = 1.1;
-        a[1][0] = 2.1;
-        a[0][1] = 3.1;
-        a[2][1] = 4.1;
+        a[(0,0)] = 1.1;
+        a[(1,0)] = 2.1;
+        a[(0,1)] = 3.1;
+        a[(2,1)] = 4.1;
         let mut b = Matrix::new( 3, 2);
-        b[0][0] = 10.;
-        b[1][0] = 20.;
-        b[0][1] = 30.;
-        b[2][1] = 40.;
+        b[(0,0)] = 10.;
+        b[(1,0)] = 20.;
+        b[(0,1)] = 30.;
+        b[(2,1)] = 40.;
 
         let a = a - b;
 
-        assert_eq!(1.1 - 10., a[0][0]);
-        assert_eq!(2.1 - 20., a[1][0]);
-        assert_eq!(3.1 - 30., a[0][1]);
-        assert_eq!(4.1 - 40., a[2][1]);
-        assert_eq!(0., a[1][1]);
+        assert_eq!(1.1 - 10., a[(0,0)]);
+        assert_eq!(2.1 - 20., a[(1,0)]);
+        assert_eq!(3.1 - 30., a[(0,1)]);
+        assert_eq!(4.1 - 40., a[(2,1)]);
+        assert_eq!(0., a[(1,1)]);
 
     }
 
     #[test]
     fn sub_assign() {
         let mut a = Matrix::new( 3, 2);
-        a[0][0] = 1.1;
-        a[1][0] = 2.1;
-        a[0][1] = 3.1;
-        a[2][1] = 4.1;
+        a[(0,0)] = 1.1;
+        a[(1,0)] = 2.1;
+        a[(0,1)] = 3.1;
+        a[(2,1)] = 4.1;
         let mut b = Matrix::new( 3, 2);
-        b[0][0] = 10.;
-        b[1][0] = 20.;
-        b[0][1] = 30.;
-        b[2][1] = 40.;
+        b[(0,0)] = 10.;
+        b[(1,0)] = 20.;
+        b[(0,1)] = 30.;
+        b[(2,1)] = 40.;
 
         a -= b;
 
-        assert_eq!(1.1 - 10., a[0][0]);
-        assert_eq!(2.1 - 20., a[1][0]);
-        assert_eq!(3.1 - 30., a[0][1]);
-        assert_eq!(4.1 - 40., a[2][1]);
-        assert_eq!(0., a[1][1]);
+        assert_eq!(1.1 - 10., a[(0,0)]);
+        assert_eq!(2.1 - 20., a[(1,0)]);
+        assert_eq!(3.1 - 30., a[(0,1)]);
+        assert_eq!(4.1 - 40., a[(2,1)]);
+        assert_eq!(0., a[(1,1)]);
     }
 
     #[test]
     fn row_iter() {
         let mut a = Matrix::new( 3, 2);
-        a[0][0] = 1.1;
-        a[0][1] = 2.1;
-        a[1][0] = 3.1;
-        a[1][1] = 4.1;
+        a[(0,0)] = 1.1;
+        a[(0,1)] = 2.1;
+        a[(1,0)] = 3.1;
+        a[(1,1)] = 4.1;
 
         let mut row_iter = a.row_iter(0);
 
@@ -414,10 +528,10 @@ mod tests {
     #[test]
     fn col_iter() {
         let mut a = Matrix::new( 3, 2);
-        a[0][0] = 1.1;
-        a[0][1] = 2.1;
-        a[1][0] = 3.1;
-        a[1][1] = 4.1;
+        a[(0,0)] = 1.1;
+        a[(0,1)] = 2.1;
+        a[(1,0)] = 3.1;
+        a[(1,1)] = 4.1;
 
         let mut col_iter = a.col_iter(0);
 
@@ -439,24 +553,24 @@ mod tests {
     #[test]
     fn multiply() {
         let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
 
         let mut b = Matrix::new( 4, 2);
-        b[0][0] = 1;
-        b[0][1] = 2;
-        b[1][0] = 3;
-        b[1][1] = 4;
+        b[(0,0)] = 1;
+        b[(0,1)] = 2;
+        b[(1,0)] = 3;
+        b[(1,1)] = 4;
 
         println!("{} {}", a, b);
 
         let mut product = Matrix::new( 3, 2);
-        product[0][0] = 7;
-        product[0][1] = 10;
-        product[1][0] = 15;
-        product[1][1] = 22;
+        product[(0,0)] = 7;
+        product[(0,1)] = 10;
+        product[(1,0)] = 15;
+        product[(1,1)] = 22;
 
         assert_eq!(product, a * b);
     }
@@ -464,24 +578,24 @@ mod tests {
     #[test]
     fn multiply2() {
         let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
 
         let mut b = Matrix::new( 4, 2);
-        b[0][0] = 1;
-        b[0][1] = 2;
-        b[1][0] = 3;
-        b[1][1] = 4;
+        b[(0,0)] = 1;
+        b[(0,1)] = 2;
+        b[(1,0)] = 3;
+        b[(1,1)] = 4;
 
         println!("{} {}", a, b);
 
         let mut product = Matrix::new( 3, 2);
-        product[0][0] = 7;
-        product[0][1] = 10;
-        product[1][0] = 15;
-        product[1][1] = 22;
+        product[(0,0)] = 7;
+        product[(0,1)] = 10;
+        product[(1,0)] = 15;
+        product[(1,1)] = 22;
 
         assert_eq!(product, a.mat_mul(&b));
     }
@@ -489,24 +603,24 @@ mod tests {
     #[test]
     fn multiply_refs() {
         let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
 
         let mut b = Matrix::new( 4, 2);
-        b[0][0] = 1;
-        b[0][1] = 2;
-        b[1][0] = 3;
-        b[1][1] = 4;
+        b[(0,0)] = 1;
+        b[(0,1)] = 2;
+        b[(1,0)] = 3;
+        b[(1,1)] = 4;
 
         println!("{} {}", a, b);
 
         let mut product = Matrix::new( 3, 2);
-        product[0][0] = 7;
-        product[0][1] = 10;
-        product[1][0] = 15;
-        product[1][1] = 22;
+        product[(0,0)] = 7;
+        product[(0,1)] = 10;
+        product[(1,0)] = 15;
+        product[(1,1)] = 22;
 
         assert_eq!(product, &a * &b);
     }
@@ -514,10 +628,10 @@ mod tests {
     #[test]
     fn multiply_vector() {
         let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
 
         let mut b = Vector::new( 4);
         b[0] = 1;
@@ -536,10 +650,10 @@ mod tests {
     #[test]
     fn multiply_vector_refs() {
         let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
 
         let mut b = Vector::new( 4);
         b[0] = 1;
@@ -558,10 +672,10 @@ mod tests {
     #[test]
     fn multiply_vector_lhs() {
         let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
 
         let mut b = Vector::new( 3);
         b[0] = 1;
@@ -581,10 +695,10 @@ mod tests {
     #[test]
     fn multiply_vector_lhs_refs() {
         let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
 
         let mut b = Vector::new( 3);
         b[0] = 1;
@@ -604,10 +718,10 @@ mod tests {
     // #[test]
     // fn col_vector() {
     //     let mut a = Matrix::new( 3, 4);
-    //     a[0][0] = 1;
-    //     a[0][1] = 2;
-    //     a[1][0] = 3;
-    //     a[1][1] = 4;
+    //     a[(0,0)] = 1;
+    //     a[(0,1)] = 2;
+    //     a[(1,0)] = 3;
+    //     a[(1,1)] = 4;
     //
     //     let b = a.col(1);
     //
@@ -620,10 +734,10 @@ mod tests {
     // #[test]
     // fn row_vector() {
     //     let mut a = Matrix::new( 3, 4);
-    //     a[0][0] = 1;
-    //     a[0][1] = 2;
-    //     a[1][0] = 3;
-    //     a[1][1] = 4;
+    //     a[(0,0)] = 1;
+    //     a[(0,1)] = 2;
+    //     a[(1,0)] = 3;
+    //     a[(1,1)] = 4;
     //
     //     let b = a.row(1);
     //
@@ -637,10 +751,10 @@ mod tests {
     #[test]
     fn elm() {
         let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
 
         assert_eq!(1, *a.elm(0, 0));
         assert_eq!(2, *a.elm(0, 1));
@@ -652,10 +766,10 @@ mod tests {
     #[test]
     fn transpose() {
         let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
 
         let t = a.transpose();
 
@@ -664,6 +778,10 @@ mod tests {
         assert_eq!(2, *t.elm(1, 0));
         assert_eq!(3, *t.elm(0, 1));
         assert_eq!(4, *t.elm(1, 1));
+        assert_eq!(1, t[(0,0)]);
+        assert_eq!(2, t[(1,0)]);
+        assert_eq!(3, t[(0,1)]);
+        assert_eq!(4, t[(1,1)]);
 
         let t2 = t.transpose();
 
@@ -672,22 +790,26 @@ mod tests {
         assert_eq!(2, *t2.elm(0, 1));
         assert_eq!(3, *t2.elm(1, 0));
         assert_eq!(4, *t2.elm(1, 1));
+        assert_eq!(1, t2[(0,0)]);
+        assert_eq!(2, t2[(0,1)]);
+        assert_eq!(3, t2[(1,0)]);
+        assert_eq!(4, t2[(1,1)]);
 
     }
 
     #[test]
     fn multiply_scalar() {
         let mut a = Matrix::new( 3, 4);
-        a[0][0] = 1;
-        a[0][1] = 2;
-        a[1][0] = 3;
-        a[1][1] = 4;
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
 
         let mut result = Matrix::new( 3, 4);
-        result[0][0] = 2;
-        result[0][1] = 4;
-        result[1][0] = 6;
-        result[1][1] = 8;
+        result[(0,0)] = 2;
+        result[(0,1)] = 4;
+        result[(1,0)] = 6;
+        result[(1,1)] = 8;
 
         a *= 2;
 

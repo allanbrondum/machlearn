@@ -49,6 +49,11 @@ impl<T> Vector<T>
         where Self: Sized {
         todo!("implement")
     }
+
+    pub fn as_matrix(&self) -> Matrix<T>
+        where Self: Sized {
+        todo!("implement")
+    }
 }
 
 impl<T> Vector<T>
