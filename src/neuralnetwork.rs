@@ -5,7 +5,7 @@ use std::fmt::{Display, Formatter, Write};
 use std::slice::Iter;
 use std::iter::Sum;
 use crate::vector::{Vector};
-use crate::matrix::{Matrix, MatrixT};
+use crate::matrix::{Matrix};
 
 pub type ampl = f64;
 

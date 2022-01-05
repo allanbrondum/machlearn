@@ -7,7 +7,7 @@ use std::slice::Iter;
 
 use itertools::Itertools;
 
-use crate::matrix::{Matrix, MatrixElement, MatrixT, MatrixDimensions};
+use crate::matrix::{Matrix, MatrixElement, MatrixDimensions};
 use crate::neuralnetwork::ampl;
 
 pub mod arit;
@@ -33,6 +33,7 @@ impl<T> Vector<T>
         if v1.len() != v2.len() {
             panic!("Vector 1 length {} not equal to vector 2 length {}", v1.len(), v2.len())
         }
+        todo!("reimplement");
         let mut sum = T::default();
         for i in 0..v1.len() {
             sum += v1[i] * v2[i];

@@ -1,5 +1,5 @@
 use std::ops::{Neg, Add, AddAssign, Sub, SubAssign, Mul, MulAssign};
-use crate::matrix::{Matrix, MatrixT, MatrixElement};
+use crate::matrix::{Matrix, MatrixElement};
 use std::iter::Sum;
 
 impl<T> Neg for Matrix<T>

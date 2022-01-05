@@ -36,16 +36,56 @@ impl MatrixElement for i32 {
 impl MatrixElement for i64 {
 }
 
-pub trait MatrixT<T>
+/// Matrix with arithmetic operations.
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Matrix<T>
     where T: MatrixElement
 {
-    fn dimensions(&self) -> MatrixDimensions;
+    dimensions: MatrixDimensions,
+    elements: Vec<T>
+}
 
-    fn elm(&self, row: usize, col:usize) -> &T;
+impl<T> Matrix<T>
+    where T: MatrixElement
+{
+    pub fn dimensions(&self) -> MatrixDimensions {
+        self.dimensions
+    }
 
-    fn mat_mul<'a>(&'a self, rhs: &'a dyn AsRef<dyn MatrixT<T> + 'a>) -> Matrix<T> {
+    fn lin_index(&self, row: usize, col:usize) -> usize {
+        row + col * self.dimensions.columns
+    }
+
+    pub fn elm(&self, row: usize, col:usize) -> &T {
+        &self.elements[self.lin_index(row, col)]
+    }
+
+    pub fn elm_mut(&mut self, row: usize, col:usize) -> &mut T {
+        let index = self.lin_index(row, col);
+        &mut self.elements[index]
+    }
+
+    pub fn column_count(&self) -> usize {
+        self.dimensions.columns
+    }
+
+    pub fn row_count(&self) -> usize {
+        self.dimensions.rows
+    }
+
+    pub fn row_iter(&self, row: usize) -> impl Iterator<Item = &T> {
+        todo!("implement");
+        vec!().iter()
+    }
+
+    pub fn col_iter(&self, col: usize) -> impl Iterator<Item = &T> {
+        todo!("implement");
+        vec!().iter()
+    }
+
+    pub fn mat_mul(&self, rhs: &Matrix<T>) -> Matrix<T> {
         let m1 = self;
-        let m2 = rhs.as_ref();
+        let m2 = rhs;
         if m1.dimensions().columns != m2.dimensions().rows {
             panic!("Cannot multiply matrices {} and {} because of dimensions", m1.dimensions(), m2.dimensions());
         }
@@ -67,13 +107,12 @@ pub trait MatrixT<T>
         result
     }
 
-    fn transpose(&self) -> TransposedMatrix<T>
+    pub fn transpose(self) -> Matrix<T>
         where Self: Sized
     {
-        TransposedMatrix {
-            matrix: self
-        }
+        todo!("implement");
     }
+
     //
     // fn row<'a>(&'a self, row: usize) -> RowVector<T>
     //     where Self: Sized {
@@ -92,56 +131,49 @@ pub trait MatrixT<T>
     // }
 }
 
-/// Matrix with arithmetic operations.
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Matrix<T>
-    where T: MatrixElement
-{
-    dimensions: MatrixDimensions,
-    elements: Vec<T>
-}
+
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct MatrixDimensions {
     pub rows: usize,
     pub columns: usize
 }
-
-struct ColIter<'a, T>
-    where T: MatrixElement
-{
-    matrix: &'a Matrix<T>,
-    column: usize,
-    row: usize
-}
-
-impl<T> ColIter<'_, T>
-    where T: MatrixElement
-{
-    fn new(matrix: &Matrix<T>, column: usize) -> ColIter<T> {
-        ColIter {
-            matrix,
-            column,
-            row: 0
-        }
-    }
-}
-
-impl<'a, T> Iterator for ColIter<'a, T>
-    where T: MatrixElement
-{
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.row == self.matrix.row_count() {
-            None
-        } else {
-            let val = &self.matrix.elements[self.row * self.matrix.column_count() + self.column];
-            self.row += 1;
-            Some(val)
-        }
-    }
-}
+//
+// struct ColIter<'a, T>
+//     where T: MatrixElement
+// {
+//     matrix: &'a Matrix<T>,
+//     column: usize,
+//     row: usize
+// }
+//
+// impl<T> ColIter<'_, T>
+//     where T: MatrixElement
+// {
+//     fn new(matrix: &Matrix<T>, column: usize) -> ColIter<T> {
+//         ColIter {
+//             matrix,
+//             column,
+//             row: 0
+//         }
+//     }
+// }
+//
+// impl<'a, T> Iterator for ColIter<'a, T>
+//     where T: MatrixElement
+// {
+//     type Item = &'a T;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         if self.row == self.matrix.row_count() {
+//             None
+//         } else {
+//             let val = &self.matrix.elements[self.row * self.matrix.column_count() + self.column];
+//             self.row += 1;
+//             Some(val)
+//         }
+//     }
+// }
 
 impl<T> Matrix<T>
     where T: MatrixElement
@@ -151,39 +183,6 @@ impl<T> Matrix<T>
             dimensions: MatrixDimensions { rows, columns },
             elements: vec![Default::default(); rows * columns]
         }
-    }
-}
-
-
-impl<T> MatrixT<T> for Matrix<T>
-    where T: MatrixElement
-{
-    fn dimensions(&self) -> MatrixDimensions {
-        self.dimensions
-    }
-
-    fn elm(&self, row: usize, col: usize) -> &T {
-        &self[row][col]
-    }
-}
-
-impl<T> Matrix<T>
-    where T: MatrixElement
-{
-    pub fn column_count(&self) -> usize {
-        self.dimensions.columns
-    }
-
-    pub fn row_count(&self) -> usize {
-        self.dimensions.rows
-    }
-
-    pub fn row_iter(&self, row: usize) -> impl Iterator<Item = &T> {
-        self[row].iter()
-    }
-
-    pub fn col_iter(&self, col: usize) -> impl Iterator<Item = &T> {
-        ColIter::new(self, col)
     }
 }
 
@@ -244,51 +243,6 @@ impl<T> Matrix<T>
         ret
     }
 }
-
-impl<'a, T> AsRef<dyn MatrixT<T> + 'a> for Matrix<T>
-    where T: MatrixElement
-{
-
-    fn as_ref(&self) -> &(dyn MatrixT<T> + 'a) {
-        self
-    }
-}
-
-pub struct TransposedMatrix<'a, T> {
-    matrix: &'a dyn MatrixT<T>
-}
-
-impl<'a, T> AsRef<dyn MatrixT<T> + 'a> for TransposedMatrix<'a, T>
-    where T: MatrixElement
-{
-
-    fn as_ref(&self) -> &(dyn MatrixT<T> + 'a) {
-        self
-    }
-}
-
-
-impl<'a, T> MatrixT<T> for TransposedMatrix<'a, T>
-    where T: MatrixElement
-{
-    fn dimensions(&self) -> MatrixDimensions {
-        let mdim = self.matrix.dimensions();
-        MatrixDimensions {
-            rows: mdim.columns,
-            columns: mdim.rows
-        }
-    }
-
-    fn elm(&self, row: usize, col: usize) -> &T {
-        self.matrix.elm(col, row)
-    }
-}
-
-// impl<T, R: AsRef<dyn MatrixT<T>>> MatrixMultiplication<T> for &R
-//     where T: Copy + PartialEq + Default + Mul<Output = T> + Add<Output = T> + AddAssign + Sum + 'static
-// {
-//
-// }
 
 #[cfg(test)]
 mod tests {
