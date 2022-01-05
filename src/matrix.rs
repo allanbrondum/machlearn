@@ -76,13 +76,13 @@ impl<T> Matrix<T>
     }
 
     pub fn row_iter(&self, row: usize) -> impl Iterator<Item = &T> {
-        todo!("implement");
-        vec!().iter()
+        let offset = self.lin_index(row, 0);
+        StrideIter::new(self.elements.as_slice(), offset, self.col_stride, self.dimensions.columns)
     }
 
     pub fn col_iter(&self, col: usize) -> impl Iterator<Item = &T> {
-        todo!("implement");
-        vec!().iter()
+        let offset = self.lin_index(0, col);
+        StrideIter::new(self.elements.as_slice(), offset, self.row_stride, self.dimensions.rows)
     }
 
     pub fn mat_mul(&self, rhs: &Matrix<T>) -> Matrix<T> {
@@ -263,44 +263,39 @@ impl<T> Matrix<T>
     }
 }
 
-// pub struct StrideSlice<'a, T> {
-//     slice: &'a [T],
-//     stride: usize
-// }
-//
-// pub struct StrideSliceMut<'a, T> {
-//     slice: &'a mut [T],
-//     stride: usize
-// }
-//
-// impl<'a, T> Index<usize> for StrideSlice<'a, T>
-//     where T: MatrixElement
-// {
-//     type Output = T;
-//
-//     fn index(&self, index: usize) -> &T {
-//         &self.slice[index * self.stride]
-//     }
-// }
-//
-// impl<'a, T> Index<usize> for StrideSliceMut<'a, T>
-//     where T: MatrixElement
-// {
-//     type Output = T;
-//
-//     fn index(&self, index: usize) -> &T {
-//         &self.slice[index * self.stride]
-//     }
-// }
-//
-// impl<'a, T> IndexMut<usize> for StrideSliceMut<'a, T>
-//     where T: MatrixElement
-// {
-//     fn index_mut(&mut self, index: usize) -> &mut T {
-//         let lin_index = index * self.stride;
-//         &mut self.slice[lin_index]
-//     }
-// }
+pub struct StrideIter<'a, T> {
+    slice: &'a [T],
+    offset: usize,
+    len: usize,
+    stride: usize,
+    index: usize
+}
+
+impl<T> StrideIter<'_, T> {
+    fn new(slice: &[T], offset: usize, stride: usize, len: usize) -> StrideIter<T> {
+        StrideIter {
+            slice,
+            offset,
+            len,
+            stride,
+            index: 0
+        }
+    }
+}
+
+impl<'a, T> Iterator for StrideIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < self.len {
+            let lin_index = self.offset + self.index * self.stride;
+            self.index = self.index + 1;
+            Some(&self.slice[lin_index])
+        } else {
+            None
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -364,6 +359,30 @@ mod tests {
         assert_eq!(0.0, *a.elm(1,1));
         assert_eq!(4.1, *a.elm(2,1));
 
+        let mut row_iter = a.row_iter(0);
+        assert_eq!(Some(&1.1), row_iter.next());
+        assert_eq!(Some(&3.1), row_iter.next());
+        assert_eq!(None, row_iter.next());
+        let mut row_iter = a.row_iter(1);
+        assert_eq!(Some(&2.1), row_iter.next());
+        assert_eq!(Some(&0.0), row_iter.next());
+        assert_eq!(None, row_iter.next());
+        let mut row_iter = a.row_iter(2);
+        assert_eq!(Some(&0.0), row_iter.next());
+        assert_eq!(Some(&4.1), row_iter.next());
+        assert_eq!(None, row_iter.next());
+
+        let mut col_iter = a.col_iter(0);
+        assert_eq!(Some(&1.1), col_iter.next());
+        assert_eq!(Some(&2.1), col_iter.next());
+        assert_eq!(Some(&0.0), col_iter.next());
+        assert_eq!(None, col_iter.next());
+        let mut col_iter = a.col_iter(1);
+        assert_eq!(Some(&3.1), col_iter.next());
+        assert_eq!(Some(&0.0), col_iter.next());
+        assert_eq!(Some(&4.1), col_iter.next());
+        assert_eq!(None, col_iter.next());
+
     }
 
     #[test]
@@ -391,6 +410,30 @@ mod tests {
         assert_eq!(3.1, *a.elm(0,1));
         assert_eq!(0.0, *a.elm(1,1));
         assert_eq!(4.1, *a.elm(2,1));
+
+        let mut row_iter = a.row_iter(0);
+        assert_eq!(Some(&1.1), row_iter.next());
+        assert_eq!(Some(&3.1), row_iter.next());
+        assert_eq!(None, row_iter.next());
+        let mut row_iter = a.row_iter(1);
+        assert_eq!(Some(&2.1), row_iter.next());
+        assert_eq!(Some(&0.0), row_iter.next());
+        assert_eq!(None, row_iter.next());
+        let mut row_iter = a.row_iter(2);
+        assert_eq!(Some(&0.0), row_iter.next());
+        assert_eq!(Some(&4.1), row_iter.next());
+        assert_eq!(None, row_iter.next());
+
+        let mut col_iter = a.col_iter(0);
+        assert_eq!(Some(&1.1), col_iter.next());
+        assert_eq!(Some(&2.1), col_iter.next());
+        assert_eq!(Some(&0.0), col_iter.next());
+        assert_eq!(None, col_iter.next());
+        let mut col_iter = a.col_iter(1);
+        assert_eq!(Some(&3.1), col_iter.next());
+        assert_eq!(Some(&0.0), col_iter.next());
+        assert_eq!(Some(&4.1), col_iter.next());
+        assert_eq!(None, col_iter.next());
 
     }
 
