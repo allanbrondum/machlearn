@@ -56,16 +56,28 @@ impl Connector {
 pub struct Network
 {
     layers: Vec<Layer>,
-    connectors: Vec<Connector>
+    connectors: Vec<Connector>,
+    sigmoid: fn(ampl) -> ampl,
+    sigmoid_derived: fn(ampl) -> ampl
+}
+
+impl Network {
+    pub fn get_sigmoid(&self) -> fn(ampl) -> ampl {
+        self.sigmoid
+    }
+
+    pub fn get_sigmoid_derived(&self) -> fn(ampl) -> ampl {
+        self.sigmoid_derived
+    }
 }
 
 const ny: f64 = 0.1;
 
-pub fn sigmoid(input: ampl) -> ampl {
+pub fn sigmoid_logistic(input: ampl) -> ampl {
     1. / (1. + (-input).exp())
 }
 
-pub fn sigmoid_derived(input: ampl) -> ampl {
+pub fn sigmoid_logistic_derived(input: ampl) -> ampl {
     (-input).exp() / (1. + (-input).exp()).powf(2.)
 }
 
@@ -77,7 +89,7 @@ impl Network {
         }
         self.layers[0].state = input;
         for i in 0..self.layers.len() - 1 {
-            self.layers[i + 1].state = (&self.connectors[i].weights * &self.layers[i].state).apply(sigmoid);
+            self.layers[i + 1].state = (&self.connectors[i].weights * &self.layers[i].state).apply(self.sigmoid);
         }
     }
 
@@ -98,7 +110,7 @@ impl Network {
             let last_connector = self.connectors.last_mut().unwrap();
             let tmp = &last_connector.weights * &layer1.state;
             for i in 0..last_connector.back_propagation_delta.len() {
-                last_connector.back_propagation_delta[i] = -2. * sigmoid_derived(tmp[i]) * (output[i] - layer2.state[i]);
+                last_connector.back_propagation_delta[i] = -2. * (self.sigmoid_derived)(tmp[i]) * (output[i] - layer2.state[i]);
             }
         }
 
@@ -110,7 +122,7 @@ impl Network {
             let connector = &mut self.connectors[connector_index];
             let tmp1 = &connector.weights * &layer1.state;
             for i in 0..connector.back_propagation_delta.len() {
-                connector.back_propagation_delta[i] = sigmoid_derived(tmp1[i]) * tmp2[i];
+                connector.back_propagation_delta[i] = (self.sigmoid_derived)(tmp1[i]) * tmp2[i];
             }
         }
 
@@ -135,7 +147,11 @@ impl Network {
 }
 
 impl Network {
-    pub fn new(dimensions: Vec<usize>) -> Self {
+    pub fn new_logistic_sigmoid(dimensions: Vec<usize>) -> Self {
+        Network::new(dimensions, sigmoid_logistic, sigmoid_logistic_derived)
+    }
+
+    pub fn new(dimensions: Vec<usize>, sigmoid: fn(ampl) -> ampl, sigmoid_derived: fn(ampl) -> ampl) -> Self {
         let mut layers = Vec::new();
         let mut connectors = Vec::new();
         for i in 0..dimensions.len() {
@@ -146,7 +162,9 @@ impl Network {
         }
         Network {
             layers,
-            connectors
+            connectors,
+            sigmoid,
+            sigmoid_derived
         }
     }
 

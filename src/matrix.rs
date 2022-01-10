@@ -223,7 +223,7 @@ impl<T> Matrix<T>
     where T: MatrixElement
 {
 
-    pub fn apply(self, func: fn(T) -> T) -> Self {
+    pub fn apply(self, mut func: impl FnMut(T) -> T) -> Self {
         let mut ret = self;
         for elm in &mut ret.elements {
             *elm = func(*elm);
@@ -269,6 +269,8 @@ impl<'a, T> Iterator for StrideIter<'a, T> {
 #[cfg(test)]
 mod tests {
     use crate::matrix::*;
+    use itertools::Itertools;
+    use std::borrow::Borrow;
 
     #[test]
     fn equals() {
@@ -560,6 +562,16 @@ mod tests {
         assert_eq!(Some(&0.), col_iter.next());
         assert_eq!(None, col_iter.next());
         assert_eq!(None, col_iter.next());
+
+        let mut col_iter = a.col_iter(1);
+        // col_iter.take_while_ref()
+
+        let r: &dyn Iterator<Item=&f64> = &col_iter;
+        let r2 = col_iter.by_ref();
+        let r: &dyn Iterator<Item=&f64> = &r2;
+        // r2.take_while()
+        // vec!(1).iter().as_ref().split()
+        // let r: &dyn Iterator<Item=&f64> = &
     }
 
     #[test]
@@ -827,4 +839,31 @@ mod tests {
 
         assert_eq!(result, a);
     }
+
+    #[test]
+    fn apply() {
+        let mut a = Matrix::new(2, 1);
+        a[(0,0)] = 1;
+        a[(1,0)] = 2;
+
+        a = a.apply(|x| 2 * x);
+
+        assert_eq!(2, a[(0,0)]);
+        assert_eq!(4, a[(1,0)]);
+
+        let mut c = 0;
+        a = a.apply(|x| { c += 1; c * x});
+
+        assert_eq!(2, a[(0,0)]);
+        assert_eq!(8, a[(1,0)]);
+
+        fn d(x: i32) -> i32 {
+            x + 1
+        }
+        a = a.apply(d);
+
+        assert_eq!(3, a[(0,0)]);
+        assert_eq!(9, a[(1,0)]);
+    }
+
 }

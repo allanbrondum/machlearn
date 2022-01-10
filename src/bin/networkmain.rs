@@ -2,29 +2,26 @@ use std::borrow::Borrow;
 use std::ops::IndexMut;
 
 use machlearn::matrix::Matrix;
-use machlearn::neuralnetwork::{Network, sigmoid, sigmoid_derived, ampl};
+use machlearn::neuralnetwork::{Network, ampl, sigmoid_logistic};
 use machlearn::vector::Vector;
 use rand::{Rng, random};
 
 fn main() {
-    //print_sigmoid_values();
-
     let mut rng = rand::thread_rng();
 
-    let mut network = Network::new(vec!(8, 6, 8));
+    let mut network = Network::new_logistic_sigmoid(vec!(8, 6, 8));
+
+    // print_sigmoid_values(&network);
 
     let mut network2 = network.clone();
 
-    fn rnggen(x: ampl) -> ampl {
-        let mut rng = rand::thread_rng();
-        rng.gen()
-    }
+    let mut rng = rand::thread_rng();
 
-    network.set_weights(0, Matrix::new(6, 8).apply(rnggen));
-    network.set_weights(1, Matrix::new(8, 6).apply(rnggen));
+    network.set_weights(0, Matrix::new(6, 8).apply(|_| rng.gen()));
+    network.set_weights(1, Matrix::new(8, 6).apply(|_| rng.gen()));
 
-    network2.set_weights(0, Matrix::new(6, 8).apply(rnggen));
-    network2.set_weights(1, Matrix::new(8, 6).apply(rnggen));
+    network2.set_weights(0, Matrix::new(6, 8).apply(|_| rng.gen()));
+    network2.set_weights(1, Matrix::new(8, 6).apply(|_| rng.gen()));
 
     let mut input = Vector::new(8);
     input[0] = 1.;
@@ -81,13 +78,15 @@ fn main() {
     println!("error squared: {}", errsqr / test_iterations as f64);
 }
 
-fn print_sigmoid_values() {
+fn print_sigmoid_values(network: &Network) {
+    let sigmoid = (network.get_sigmoid());
     println!("sigmoid 0.0: {}", sigmoid(0.0));
     println!("sigmoid 0.2: {}", sigmoid(0.2));
     println!("sigmoid 0.4: {}", sigmoid(0.4));
     println!("sigmoid 0.6: {}", sigmoid(0.6));
     println!("sigmoid 0.8: {}", sigmoid(0.8));
 
+    let sigmoid_derived = (network.get_sigmoid_derived());
     println!("sigmoid_derived 0.0: {}", sigmoid_derived(0.0));
     println!("sigmoid_derived 0.2: {}", sigmoid_derived(0.2));
     println!("sigmoid_derived 0.4: {}", sigmoid_derived(0.4));

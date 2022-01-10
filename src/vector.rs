@@ -67,7 +67,7 @@ impl<T> Vector<T>
     where T: MatrixElement
 {
 
-    pub fn apply(self, func: fn(T) -> T) -> Self {
+    pub fn apply(self, mut func: impl FnMut(T) -> T) -> Self {
         let mut ret = self;
         for elm in &mut ret.elements {
             *elm = func(*elm);
@@ -307,5 +307,31 @@ mod tests {
 
         assert_eq!(result, a);
 
+    }
+
+    #[test]
+    fn apply() {
+        let mut a = Vector::new(2);
+        a[0] = 1;
+        a[1] = 2;
+
+        a = a.apply(|x| 2 * x);
+
+        assert_eq!(2, a[0]);
+        assert_eq!(4, a[1]);
+
+        let mut c = 0;
+        a = a.apply(|x| { c += 1; c * x});
+
+        assert_eq!(2, a[0]);
+        assert_eq!(8, a[1]);
+
+        fn d(x: i32) -> i32 {
+            x + 1
+        }
+        a = a.apply(d);
+
+        assert_eq!(3, a[0]);
+        assert_eq!(9, a[1]);
     }
 }
