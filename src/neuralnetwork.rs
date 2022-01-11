@@ -93,6 +93,16 @@ impl Network {
         }
     }
 
+    pub fn evaluate_input_no_state_change(&self, mut input: Vector<ampl>) -> Vector<ampl> {
+        if input.len() != self.layers.first().unwrap().state.len() {
+            panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().state.len())
+        }
+        for i in 0..self.layers.len() - 1 {
+            input = (&self.connectors[i].weights * &input).apply(self.sigmoid);
+        }
+        input
+    }
+
     pub fn backpropagate(&mut self, input: Vector<ampl>, output: &Vector<ampl>) {
         if input.len() != self.layers.first().unwrap().state.len() {
             panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().state.len())
@@ -217,6 +227,35 @@ impl Display for Network
 
         std::fmt::Result::Ok(())
     }
+}
+
+pub struct Sample(pub Vector<ampl>, pub Vector<ampl>);
+
+pub fn run_learning_iterations(network: &mut Network, samples: impl Iterator<Item=Sample>) {
+    for sample in samples {
+        network.backpropagate(sample.0, &sample.1);
+    }
+}
+
+pub fn run_test_iterations(network: &Network, samples: impl Iterator<Item=Sample>) -> ampl {
+    let mut errsqr = 0.;
+    let mut samples_count = 0;
+    for sample in samples {
+        let output = network.evaluate_input_no_state_change(sample.0);
+        let diff= output - sample.1;
+        errsqr += &diff * &diff;
+        samples_count += 1;
+    }
+    errsqr / samples_count as ampl
+}
+
+pub fn run_learning_and_test_iterations(
+    network: &mut Network,
+    learning_samples: impl Iterator<Item=Sample>,
+    test_samples: impl Iterator<Item=Sample>) -> ampl
+{
+    run_learning_iterations(network, learning_samples);
+    run_test_iterations(network, test_samples)
 }
 
 #[cfg(test)]

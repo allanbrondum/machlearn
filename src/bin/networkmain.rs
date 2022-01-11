@@ -2,13 +2,13 @@ use std::borrow::Borrow;
 use std::ops::IndexMut;
 
 use machlearn::matrix::Matrix;
-use machlearn::neuralnetwork::{Network, ampl, sigmoid_logistic};
+use machlearn::neuralnetwork::{Network, ampl, sigmoid_logistic, Sample, run_learning_iterations};
 use machlearn::vector::Vector;
 use rand::{Rng, random};
+use std::iter;
+use machlearn::neuralnetwork;
 
 fn main() {
-    let mut rng = rand::thread_rng();
-
     let mut network = Network::new_logistic_sigmoid(vec!(8, 6, 8));
 
     // print_sigmoid_values(&network);
@@ -23,59 +23,20 @@ fn main() {
     network2.set_weights(0, Matrix::new(6, 8).apply(|_| rng.gen()));
     network2.set_weights(1, Matrix::new(8, 6).apply(|_| rng.gen()));
 
-    let mut input = Vector::new(8);
-    input[0] = 1.;
-    input[1] = 1.;
-    input[2] = 1.;
-    input[3] = 1.;
-    input[4] = 1.;
-    network.evaluate_input_state(input.clone());
-    let output = network.get_output();
+    let mut samples = iter::from_fn(
+        move || {
+            let input = Vector::new(8).apply(|_| rng.gen());
+            let output = network.evaluate_input_no_state_change(input.clone());
+            Some(Sample(input, output))
+        });
 
-    // for layer in network.get_layers() {
-    //     println!("layer state: {}", layer.get_state());
-    // }
+    let learning_samples = samples.clone().take(1000);
+    let test_samples = samples.clone().take(100);
 
-    // learning set
-    let learning_iterations = 1000;
-    for i in 0..learning_iterations {
-        let mut input = Vector::new(8);
-        for j in 0..8 {
-            input[j] = rng.gen();
-        }
+    neuralnetwork::run_learning_iterations(&mut network2, learning_samples);
+    let errsqr = neuralnetwork::run_test_iterations(&network2, test_samples);
 
-        network.evaluate_input_state(input.clone());
-        let output = network.get_output();
-
-        network2.backpropagate(input.clone(), output);
-    }
-
-    println!("network:\n{}", network);
-
-    println!("network:\n{}", network2);
-
-    // test set
-    let test_iterations = 100;
-    let mut errsqr = 0.;
-    for i in 0..test_iterations {
-        let mut input = Vector::new(8);
-        for j in 0..8 {
-            input[j] = rng.gen();
-        }
-
-        network.evaluate_input_state(input.clone());
-        let output = network.get_output();
-
-        network2.evaluate_input_state(input.clone());
-        let output2 = network2.get_output();
-
-        let diff = output.clone() - output2.clone();
-        errsqr += &diff * &diff;
-
-        // println!("output1: {}", output);
-        // println!("output2: {}", output2);
-    }
-    println!("error squared: {}", errsqr / test_iterations as f64);
+    println!("error squared: {}", errsqr);
 }
 
 fn print_sigmoid_values(network: &Network) {
