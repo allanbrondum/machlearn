@@ -71,8 +71,6 @@ impl Network {
     }
 }
 
-const ny: f64 = 0.1;
-
 pub fn sigmoid_logistic(input: ampl) -> ampl {
     1. / (1. + (-input).exp())
 }
@@ -103,7 +101,7 @@ impl Network {
         input
     }
 
-    pub fn backpropagate(&mut self, input: Vector<ampl>, output: &Vector<ampl>) {
+    pub fn backpropagate(&mut self, input: Vector<ampl>, output: &Vector<ampl>, ny: ampl) {
         if input.len() != self.layers.first().unwrap().state.len() {
             panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().state.len())
         }
@@ -231,9 +229,9 @@ impl Display for Network
 
 pub struct Sample(pub Vector<ampl>, pub Vector<ampl>);
 
-pub fn run_learning_iterations(network: &mut Network, samples: impl Iterator<Item=Sample>) {
+pub fn run_learning_iterations(network: &mut Network, samples: impl Iterator<Item=Sample>, ny: ampl) {
     for sample in samples {
-        network.backpropagate(sample.0, &sample.1);
+        network.backpropagate(sample.0, &sample.1, ny);
     }
 }
 
@@ -252,9 +250,10 @@ pub fn run_test_iterations(network: &Network, samples: impl Iterator<Item=Sample
 pub fn run_learning_and_test_iterations(
     network: &mut Network,
     learning_samples: impl Iterator<Item=Sample>,
-    test_samples: impl Iterator<Item=Sample>) -> ampl
+    test_samples: impl Iterator<Item=Sample>,
+    ny: ampl) -> ampl
 {
-    run_learning_iterations(network, learning_samples);
+    run_learning_iterations(network, learning_samples, ny);
     run_test_iterations(network, test_samples)
 }
 

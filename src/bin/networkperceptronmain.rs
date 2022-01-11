@@ -1,0 +1,48 @@
+use std::borrow::Borrow;
+use std::ops::IndexMut;
+
+use machlearn::matrix::Matrix;
+use machlearn::neuralnetwork::{Network, ampl, sigmoid_logistic, Sample, run_learning_iterations};
+use machlearn::vector::Vector;
+use rand::{Rng, random};
+use std::iter;
+use machlearn::neuralnetwork;
+
+fn main() {
+    let mut network = Network::new_logistic_sigmoid(vec!(8, 1));
+
+    let mut rng = rand::thread_rng();
+
+    let mut perceptron = Vector::new(8);
+    perceptron[0] = 8.;
+    perceptron[1] = -6.;
+    perceptron[2] = 4.;
+    perceptron[3] = 10.;
+    perceptron[4] = 12.;
+    perceptron[5] = -5.;
+    perceptron[6] = 0.;
+    perceptron[7] = 1.;
+
+    let mut samples = iter::from_fn(
+        move || {
+            let input = Vector::new(8).apply(|_| rng.gen());
+            // let output = if perceptron.vec_prod(&input) > 0. {1.0} else {0.0};
+            let output = match perceptron.vec_prod(&input) {
+                x if x > 0. => 1.0,
+                _ => 0.0,
+            };
+            let mut output_vector = Vector::new(1);
+            output_vector[0] = output;
+            Some(Sample(input, output_vector))
+        });
+
+    let learning_samples = samples.clone().take(100000);
+    let test_samples = samples.clone().take(1000);
+
+    neuralnetwork::run_learning_iterations(&mut network, learning_samples, 1.0);
+    let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
+
+    println!("error squared: {}", errsqr);
+    println!("network connector: {}", network.get_weights(0));
+}
+
