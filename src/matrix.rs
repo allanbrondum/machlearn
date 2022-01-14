@@ -225,10 +225,14 @@ impl<T> Matrix<T>
 
     pub fn apply(self, mut func: impl FnMut(T) -> T) -> Self {
         let mut ret = self;
-        for elm in &mut ret.elements {
+        ret.apply_ref(func);
+        ret
+    }
+
+    pub fn apply_ref(&mut self, mut func: impl FnMut(T) -> T) {
+        for elm in &mut self.elements {
             *elm = func(*elm);
         }
-        ret
     }
 }
 
@@ -864,6 +868,11 @@ mod tests {
 
         assert_eq!(3, a[(0,0)]);
         assert_eq!(9, a[(1,0)]);
+
+        a.apply_ref(|x| -x);
+
+        assert_eq!(-3, a[(0,0)]);
+        assert_eq!(-9, a[(1,0)]);
     }
 
 }

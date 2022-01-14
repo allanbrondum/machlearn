@@ -51,6 +51,18 @@ impl<T> Vector<T>
     pub fn as_matrix(&self) -> Matrix<T> {
         todo!("implement")
     }
+
+    pub fn push(&mut self, elm: T) {
+        self.elements.push(elm);
+    }
+
+    pub fn pop(&mut self) -> T {
+        self.elements.pop().unwrap()
+    }
+
+    pub fn last(&mut self) -> &mut T {
+        self.elements.last_mut().unwrap()
+    }
 }
 
 impl<T> Vector<T>

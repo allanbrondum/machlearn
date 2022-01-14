@@ -6,6 +6,7 @@ use std::slice::Iter;
 use std::iter::Sum;
 use crate::vector::{Vector};
 use crate::matrix::{Matrix};
+use rand::Rng;
 
 pub type ampl = f64;
 
@@ -58,7 +59,17 @@ pub struct Network
     layers: Vec<Layer>,
     connectors: Vec<Connector>,
     sigmoid: fn(ampl) -> ampl,
-    sigmoid_derived: fn(ampl) -> ampl
+    sigmoid_derived: fn(ampl) -> ampl,
+    biases: bool,
+}
+
+impl Network {
+    pub fn set_random_weights(&mut self) {
+        let mut rng = rand::thread_rng();
+        for connector in &mut self.connectors {
+            connector.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
+        }
+    }
 }
 
 impl Network {
@@ -81,24 +92,37 @@ pub fn sigmoid_logistic_derived(input: ampl) -> ampl {
 
 impl Network {
 
-    pub fn evaluate_input_state(&mut self, input: Vector<ampl>) {
+    pub fn evaluate_input_state(&mut self, mut input: Vector<ampl>) {
         if input.len() != self.layers.first().unwrap().state.len() {
             panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().state.len())
         }
         self.layers[0].state = input;
+        if (self.biases) {
+            *self.layers[0].state.last() = 1.0;
+        }
         for i in 0..self.layers.len() - 1 {
             self.layers[i + 1].state = (&self.connectors[i].weights * &self.layers[i].state).apply(self.sigmoid);
+            if (self.biases) {
+                *self.layers[i + 1].state.last() = 1.0;
+            }
         }
     }
 
-    pub fn evaluate_input_no_state_change(&self, mut input: Vector<ampl>) -> Vector<ampl> {
+    pub fn evaluate_input_no_state_change(&self, mut input: &Vector<ampl>) -> Vector<ampl> {
         if input.len() != self.layers.first().unwrap().state.len() {
             panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().state.len())
         }
-        for i in 0..self.layers.len() - 1 {
-            input = (&self.connectors[i].weights * &input).apply(self.sigmoid);
+        let mut state= input.clone();
+        if (self.biases) {
+            *state.last() = 1.0;
         }
-        input
+        for i in 0..self.layers.len() - 1 {
+            state = (&self.connectors[i].weights * &state).apply(self.sigmoid);
+            if (self.biases) {
+                *state.last() = 1.0;
+            }
+        }
+        state
     }
 
     pub fn backpropagate(&mut self, input: Vector<ampl>, output: &Vector<ampl>, ny: ampl) {
@@ -110,6 +134,11 @@ impl Network {
         }
 
         self.evaluate_input_state(input);
+
+        let mut output = output.clone();
+        if (self.biases) {
+            *output.last() = 1.0;
+        }
 
         // last connector
         {
@@ -144,22 +173,26 @@ impl Network {
             let mut tmp = deltam.mat_mul(&statemt);
             tmp *= -ny;
             connector.weights += tmp;
-
-            // for i in 0..connector.weights.row_count() {
-            //     for j in 0..connector.weights.column_count() {
-            //         connector.weights[i][j] += - ny * layer1.state[j] * connector.back_propagation_delta[i];
-            //     }
-            // }
         }
     }
 }
 
 impl Network {
     pub fn new_logistic_sigmoid(dimensions: Vec<usize>) -> Self {
-        Network::new(dimensions, sigmoid_logistic, sigmoid_logistic_derived)
+        Network::new(dimensions, sigmoid_logistic, sigmoid_logistic_derived, false)
     }
 
-    pub fn new(dimensions: Vec<usize>, sigmoid: fn(ampl) -> ampl, sigmoid_derived: fn(ampl) -> ampl) -> Self {
+    pub fn new_logistic_sigmoid_biases(dimensions: Vec<usize>) -> Self {
+        Network::new(dimensions, sigmoid_logistic, sigmoid_logistic_derived, true)
+    }
+
+    pub fn new(
+        dimensions: Vec<usize>,
+        sigmoid: fn(ampl) -> ampl,
+        sigmoid_derived: fn(ampl) -> ampl,
+        biases: bool) -> Self
+    {
+
         let mut layers = Vec::new();
         let mut connectors = Vec::new();
         for i in 0..dimensions.len() {
@@ -172,7 +205,8 @@ impl Network {
             layers,
             connectors,
             sigmoid,
-            sigmoid_derived
+            sigmoid_derived,
+            biases
         }
     }
 
@@ -193,6 +227,10 @@ impl Network {
 
     pub fn get_output(&self) -> &Vector<ampl> {
         self.layers.last().unwrap().get_state()
+    }
+
+    pub fn get_layer_count(&self) -> usize {
+        self.layers.len()
     }
 }
 
@@ -232,19 +270,25 @@ pub struct Sample(pub Vector<ampl>, pub Vector<ampl>);
 pub fn run_learning_iterations(network: &mut Network, samples: impl Iterator<Item=Sample>, ny: ampl) {
     for sample in samples {
         network.backpropagate(sample.0, &sample.1, ny);
+        // println!("network {}", network);
     }
 }
 
 pub fn run_test_iterations(network: &Network, samples: impl Iterator<Item=Sample>) -> ampl {
-    let mut errsqr = 0.;
+    let mut errsqr_sum = 0.;
     let mut samples_count = 0;
     for sample in samples {
-        let output = network.evaluate_input_no_state_change(sample.0);
-        let diff= output - sample.1;
-        errsqr += &diff * &diff;
+        let output = network.evaluate_input_no_state_change(&sample.0);
+        let diff= output - &sample.1;
+        let errsqr = &diff * &diff;
+        // if (errsqr > 0.1) {
+        //     println!("errsqr {} input {} output sample {} output network {}", errsqr, sample.0, sample.1, output);
+        // }
+        errsqr_sum += errsqr;
         samples_count += 1;
     }
-    errsqr / samples_count as ampl
+    // println!("errsqr {} samples_count {}", errsqr_sum, samples_count);
+    errsqr_sum / samples_count as ampl
 }
 
 pub fn run_learning_and_test_iterations(

@@ -44,6 +44,16 @@ impl<T> Sub for Vector<T>
     type Output = Self;
 
     fn sub(mut self, rhs: Self) -> Self::Output {
+        self.sub(&rhs)
+    }
+}
+
+impl<T> Sub<&Vector<T>> for Vector<T>
+    where T: MatrixElement
+{
+    type Output = Self;
+
+    fn sub(mut self, rhs: &Vector<T>) -> Self::Output {
         self -= rhs;
         self
     }
@@ -53,6 +63,14 @@ impl<T> SubAssign for Vector<T>
     where T: MatrixElement
 {
     fn sub_assign(&mut self, other: Self) {
+        self.sub_assign(&other);
+    }
+}
+
+impl<T> SubAssign<&Vector<T>> for Vector<T>
+    where T: MatrixElement
+{
+    fn sub_assign(&mut self, other: &Vector<T>) {
         for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
             *elm_pair.0 -= *elm_pair.1;
         }

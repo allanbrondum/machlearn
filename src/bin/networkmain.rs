@@ -17,11 +17,8 @@ fn main() {
 
     let mut rng = rand::thread_rng();
 
-    network.set_weights(0, Matrix::new(6, 8).apply(|_| rng.gen()));
-    network.set_weights(1, Matrix::new(8, 6).apply(|_| rng.gen()));
-
-    network2.set_weights(0, Matrix::new(6, 8).apply(|_| rng.gen()));
-    network2.set_weights(1, Matrix::new(8, 6).apply(|_| rng.gen()));
+    network.set_random_weights();
+    network2.set_random_weights();
 
     let mut samples = iter::from_fn(
         move || {
