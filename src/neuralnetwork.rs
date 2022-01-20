@@ -256,7 +256,7 @@ impl Display for Network
         f.write_str("Connectors:\n")?;
         for connector in &self.connectors {
             write!(f, "{}\n", connector.weights.dimensions())?;
-            write!(f, "weights: {}", connector.weights)?;
+            write!(f, "weights:\n{}", connector.weights)?;
             write!(f, "backprop delta: {}\n\n", connector.back_propagation_delta)?;
         }
 

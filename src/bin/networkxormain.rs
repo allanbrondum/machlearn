@@ -42,7 +42,9 @@ fn main() {
 
     println!("error squared: {}", errsqr);
     for i in 0..network.get_layer_count() - 1 {
-        println!("network connector {}: {}", i ,network.get_weights(i));
+        println!("network connector {}:\n{}", i ,network.get_weights(i));
     }
+
+    // println!("network:\n{}", network);
 }
 

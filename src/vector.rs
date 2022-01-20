@@ -111,7 +111,11 @@ impl<T> Display for Vector<T>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str("[")?;
-        write!(f, "{}", self.iter().format(" "))?;
+        write!(f,
+               "{}",
+               self.iter().format_with(
+                   " ",
+                   |elt, f| f(&format_args!("{:6.2}", elt))))?;
         f.write_str("]")?;
         std::fmt::Result::Ok(())
     }

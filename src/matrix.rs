@@ -199,7 +199,7 @@ impl<T> Display for Matrix<T>
         for row in 0..self.row_count() {
             f.write_str("|")?;
             for col in 0..self.column_count() {
-                write!(f, "{}", self[(row,col)])?;
+                write!(f, "{:6.2}", self[(row,col)])?;
                 if col != self.column_count() - 1 {
                     f.write_str(" ")?;
                 }
