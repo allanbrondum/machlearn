@@ -5,6 +5,7 @@ use std::fmt::{Display, Formatter};
 use crate::vector::{Vector};
 use crate::matrix::{Matrix};
 use rand::Rng;
+use rayon::prelude::*;
 
 pub type Ampl = f64;
 
@@ -276,17 +277,30 @@ pub fn run_test_iterations(network: &Network, samples: impl Iterator<Item=Sample
     let mut errsqr_sum = 0.;
     let mut samples_count = 0;
     for sample in samples {
-        let output = network.evaluate_input_no_state_change(&sample.0);
-        let diff= output - &sample.1;
-        let errsqr = &diff * &diff;
-        // if (errsqr > 0.1) {
-        //     println!("errsqr {} input {} output sample {} output network {}", errsqr, sample.0, sample.1, output);
-        // }
+        let errsqr = get_errsqr(network, &sample);
         errsqr_sum += errsqr;
         samples_count += 1;
     }
     // println!("errsqr {} samples_count {}", errsqr_sum, samples_count);
     errsqr_sum / samples_count as Ampl
+}
+
+pub fn run_test_iterations_parallel(network: &Network, samples: impl ParallelIterator<Item=Sample>) -> Ampl {
+    let result: (i32, Ampl) = samples.map(|sample| {
+        (1, get_errsqr(network, &sample))
+    }).reduce(|| (0, 0.0), |x, y| (x.0 + y.0, x.1 + y.1));
+    result.1 / result.0 as Ampl
+}
+
+
+fn get_errsqr(network: &Network, sample: &Sample) -> Ampl {
+    let output = network.evaluate_input_no_state_change(&sample.0);
+    let diff = output - &sample.1;
+    let errsqr = &diff * &diff;
+    // if (errsqr > 0.1) {
+    //     println!("errsqr {} input {} output sample {} output network {}", errsqr, sample.0, sample.1, output);
+    // }
+    errsqr
 }
 
 pub fn run_learning_and_test_iterations(
