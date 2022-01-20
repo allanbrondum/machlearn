@@ -1,6 +1,6 @@
 use std::ops::{Neg, Add, AddAssign, Sub, SubAssign, Mul, MulAssign};
 use crate::matrix::{Matrix, MatrixElement};
-use std::iter::Sum;
+
 
 impl<T> Neg for Matrix<T>
     where T: MatrixElement
@@ -61,8 +61,7 @@ impl<T> MulAssign<T> for Matrix<T>
     where T: MatrixElement {
 
     fn mul_assign(&mut self, rhs: T) {
-        let mut ret = self;
-        for elm in &mut ret.elements {
+        for elm in &mut self.elements {
             *elm = rhs * *elm;
         }
     }

@@ -1,7 +1,7 @@
 use std::ops::{Neg, AddAssign, Sub, SubAssign, Add, Mul, MulAssign};
 use crate::vector::{Vector};
 use crate::matrix::{Matrix, MatrixElement};
-use std::iter::Sum;
+
 
 
 impl<T> Neg for Vector<T>
@@ -43,7 +43,7 @@ impl<T> Sub for Vector<T>
 {
     type Output = Self;
 
-    fn sub(mut self, rhs: Self) -> Self::Output {
+    fn sub(self, rhs: Self) -> Self::Output {
         self.sub(&rhs)
     }
 }
@@ -81,8 +81,7 @@ impl<T> MulAssign<T> for Vector<T>
     where T: MatrixElement {
 
     fn mul_assign(&mut self, rhs: T) {
-        let mut ret = self;
-        for elm in &mut ret.elements {
+        for elm in &mut self.elements {
             *elm = rhs * *elm;
         }
     }

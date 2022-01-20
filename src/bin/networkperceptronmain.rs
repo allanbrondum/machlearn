@@ -1,10 +1,9 @@
-use std::borrow::Borrow;
-use std::ops::IndexMut;
 
-use machlearn::matrix::Matrix;
-use machlearn::neuralnetwork::{Network, ampl, sigmoid_logistic, Sample, run_learning_iterations};
+
+
+use machlearn::neuralnetwork::{Network,  Sample};
 use machlearn::vector::Vector;
-use rand::{Rng, random};
+use rand::{Rng};
 use std::iter;
 use machlearn::neuralnetwork;
 
@@ -24,7 +23,7 @@ fn main() {
     perceptron[6] = 0.;
     perceptron[7] = 1.;
 
-    let mut samples = iter::from_fn(
+    let samples = iter::from_fn(
         move || {
             let input = Vector::new(8).apply(|_| if rng.gen_bool(0.5) {1.0} else {-1.0} * rng.gen_range(0.5..1.0));
             // let mut input = Vector::new(8);

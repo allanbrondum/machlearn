@@ -1,14 +1,13 @@
 //! Vector type and arithmetic operations on the Vector.
 
-use std::fmt::{Display, Formatter, Write};
-use std::iter::Sum;
-use std::ops::{Add, AddAssign, Deref, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign};
-use std::slice::Iter;
+use std::fmt::{Display, Formatter};
+
+use std::ops::{Index, IndexMut};
+
 
 use itertools::Itertools;
 
-use crate::matrix::{Matrix, MatrixElement, MatrixDimensions};
-use crate::neuralnetwork::ampl;
+use crate::matrix::{Matrix, MatrixElement};
 
 pub mod arit;
 

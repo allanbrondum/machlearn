@@ -1,12 +1,9 @@
-use std::borrow::Borrow;
-use std::ops::IndexMut;
 
-use machlearn::matrix::Matrix;
-use machlearn::neuralnetwork::{Network, ampl, sigmoid_logistic, Sample, run_learning_iterations};
-use machlearn::vector::Vector;
-use rand::{Rng, random};
 use std::iter;
+use rand::Rng;
+use machlearn::neuralnetwork::{ Network, Sample};
 use machlearn::neuralnetwork;
+use machlearn::vector::Vector;
 
 fn main() {
     let mut network = Network::new_logistic_sigmoid_biases(vec!(3, 3, 2));
@@ -14,7 +11,7 @@ fn main() {
 
     let mut rng = rand::thread_rng();
 
-    let mut samples = iter::from_fn(
+    let samples = iter::from_fn(
         move || {
             let input = Vector::new(3).apply(|_| if rng.gen_bool(0.5) {1.0} else {0.0});
             // let input = Vector::new(2).apply(|_| if rng.gen_bool(0.5) {1.0} else {0.0});

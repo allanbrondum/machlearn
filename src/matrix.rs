@@ -1,10 +1,9 @@
 //! Matrix type and arithmetic operations on the Matrix.
 
-use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAssign};
-use std::fmt::{Display, Formatter, Write};
-use std::slice::Iter;
+use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul};
+use std::fmt::{Display, Formatter};
+
 use std::iter::Sum;
-use crate::vector::Vector;
 
 pub mod arit;
 
@@ -223,7 +222,7 @@ impl<T> Matrix<T>
     where T: MatrixElement
 {
 
-    pub fn apply(self, mut func: impl FnMut(T) -> T) -> Self {
+    pub fn apply(self, func: impl FnMut(T) -> T) -> Self {
         let mut ret = self;
         ret.apply_ref(func);
         ret
