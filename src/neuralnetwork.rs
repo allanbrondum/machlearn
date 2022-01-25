@@ -166,6 +166,8 @@ impl Network {
             let connector = &mut self.connectors[connector_index];
             let layer1 = &self.layers[connector_index];
 
+            // println!("backpropagation: {}", connector.back_propagation_delta);
+
             let deltam = connector.back_propagation_delta.clone().to_matrix();
             let statem = layer1.state.clone().to_matrix();
             let statemt = statem.transpose();
@@ -264,6 +266,7 @@ impl Display for Network
     }
 }
 
+/// Sample tuple, .0: input, .1: output
 pub struct Sample(pub Vector<Ampl>, pub Vector<Ampl>);
 
 pub fn run_learning_iterations(network: &mut Network, samples: impl Iterator<Item=Sample>, ny: Ampl) {

@@ -2,7 +2,7 @@
 
 use std::fmt::{Display, Formatter};
 
-use std::ops::{Index, IndexMut};
+use std::ops::{Index, IndexMut, Deref};
 
 
 use itertools::Itertools;
@@ -64,12 +64,28 @@ impl<T> Vector<T>
     }
 }
 
+impl<T> Deref for Vector<T>
+    where T: MatrixElement
+{
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        self.elements.deref()
+    }
+}
+
 impl<T> Vector<T>
     where T: MatrixElement
 {
     pub fn new(len: usize) -> Vector<T> {
         Vector {
             elements: vec![Default::default(); len]
+        }
+    }
+
+    pub fn from_vec(vec: Vec<T>) -> Vector<T> {
+        Vector {
+            elements: vec
         }
     }
 }
@@ -124,6 +140,8 @@ impl<T> Display for Vector<T>
 #[cfg(test)]
 mod tests {
     use crate::vector::*;
+    use std::ops::Mul;
+    use crate::matrix::MatrixDimensions;
 
 
     #[test]
