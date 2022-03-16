@@ -1,7 +1,7 @@
 //! Simple multilayer fully connected neural network using backpropagation of errors (gradient descent) for learning.
 
 use std::fmt::{Display, Formatter};
-
+use serde::{Serialize, Deserialize};
 use crate::vector::{Vector};
 use crate::matrix::{Matrix};
 use rand::Rng;
@@ -10,12 +10,14 @@ use rayon::prelude::*;
 pub type Ampl = f64;
 
 #[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct Layer
 {
     state: Vector<Ampl>
 }
 
 #[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct Connector
 {
     weights: Matrix<Ampl>,
@@ -68,6 +70,10 @@ impl Network {
         for connector in &mut self.connectors {
             connector.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
         }
+    }
+
+    pub fn copy_all_weights(&self) -> Vec<Matrix<Ampl>> {
+        self.connectors.iter().map(|con| con.weights.clone()).collect()
     }
 }
 
@@ -297,6 +303,7 @@ pub fn run_test_iterations_parallel(network: &Network, samples: impl ParallelIte
 
 
 fn get_errsqr(network: &Network, sample: &Sample) -> Ampl {
+    // println!("{:?}", std::thread::current());
     let output = network.evaluate_input_no_state_change(&sample.0);
     let diff = output - &sample.1;
     let errsqr = &diff * &diff;

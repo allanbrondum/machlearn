@@ -2,7 +2,7 @@
 
 use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul};
 use std::fmt::{Display, Formatter};
-
+use serde::{Serialize, Deserialize};
 use std::iter::Sum;
 
 pub mod arit;
@@ -37,6 +37,7 @@ impl MatrixElement for i64 {
 
 /// Matrix with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Serialize, Deserialize)]
 pub struct Matrix<T>
     where T: MatrixElement
 {
@@ -144,6 +145,7 @@ impl<T> Matrix<T>
 
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Serialize, Deserialize)]
 pub struct MatrixDimensions {
     pub rows: usize,
     pub columns: usize

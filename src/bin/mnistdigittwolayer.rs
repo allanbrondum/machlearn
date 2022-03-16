@@ -1,18 +1,19 @@
-
-
-
-use machlearn::neuralnetwork::{Network, Sample, Ampl};
-use machlearn::vector::Vector;
-use rand::{Rng};
-use std::{iter, io};
-use machlearn::neuralnetwork;
-use std::fs::File;
-use std::io::{Read, BufReader, Bytes, BufRead};
-use itertools::{Itertools, Chunk};
-use std::iter::{FromFn, Take};
-use rayon::iter::{ParallelBridge, ParallelIterator};
+use std::{fs, io, iter};
 use std::cmp::Ordering;
+use std::fs::File;
+use std::io::{BufRead, BufReader, BufWriter, Bytes, Read, Write};
+use std::iter::{FromFn, Take};
+use std::ops::Deref;
+use std::rc::Rc;
 use std::time::Instant;
+
+use itertools::{Chunk, Itertools};
+use rand::Rng;
+use rayon::iter::{ParallelBridge, ParallelIterator};
+
+use machlearn::neuralnetwork::{Ampl, Network, Sample};
+use machlearn::neuralnetwork;
+use machlearn::vector::Vector;
 
 const IMAGE_WIDTH_HEIGHT: usize = 28;
 const IMAGE_PIXEL_COUNT: usize = IMAGE_WIDTH_HEIGHT * IMAGE_WIDTH_HEIGHT;
@@ -33,7 +34,8 @@ fn main() {
     let start = Instant::now();
     println!("learning");
 
-    neuralnetwork::run_learning_iterations(&mut network, get_learning_samples().take(60000), 0.3);
+    const LEARNING_SAMPLES: usize = 60_000;
+    neuralnetwork::run_learning_iterations(&mut network, get_learning_samples().take(LEARNING_SAMPLES), 0.3);
 
     let duration = start.elapsed();
     println!("duration {:.2?}", duration);
@@ -41,11 +43,12 @@ fn main() {
     let start = Instant::now();
     println!("testing");
 
+    const TEST_SAMPLES: usize = 1000;
     // let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
-    let errsqr = neuralnetwork::run_test_iterations_parallel(&network, get_test_samples().take(1000).par_bridge());
+    let errsqr = neuralnetwork::run_test_iterations_parallel(&network, get_test_samples().take(TEST_SAMPLES).par_bridge());
 
     test_correct_percentage(&network, get_test_samples().take(20).par_bridge(), true);
-    let pct_correct = test_correct_percentage(&network, get_test_samples().take(1000).par_bridge(), false);
+    let pct_correct = test_correct_percentage(&network, get_test_samples().take(TEST_SAMPLES).par_bridge(), false);
 
     let duration = start.elapsed();
     println!("duration {:.2?}", duration);
@@ -53,7 +56,16 @@ fn main() {
     println!("error squared: {:.5}", errsqr);
     println!("% correct: {:.2}", pct_correct);
 
-    println!("network: {}", network);
+    // println!("network: {}", network);
+
+    write_network_to_file(&network);
+}
+
+fn write_network_to_file(network: &Network) {
+    let json = serde_json::to_string(&network.copy_all_weights()).expect("error serializing");
+    let mut file = fs::File::create("networkweights.json").expect("error creating file");
+    file.write_all(json.as_bytes()).expect("error writing");
+    file.flush().unwrap();
 }
 
 pub fn test_correct_percentage(network: &Network, samples: impl ParallelIterator<Item=Sample>, print: bool) -> f64 {

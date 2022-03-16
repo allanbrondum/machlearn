@@ -1,7 +1,7 @@
 //! Vector type and arithmetic operations on the Vector.
 
 use std::fmt::{Display, Formatter};
-
+use serde::{Serialize, Deserialize};
 use std::ops::{Index, IndexMut, Deref};
 
 
@@ -13,6 +13,7 @@ pub mod arit;
 
 /// Vector with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Serialize, Deserialize)]
 pub struct Vector<T>
     where T: MatrixElement
 {
