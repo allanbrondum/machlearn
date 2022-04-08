@@ -14,6 +14,9 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use machlearn::neuralnetwork::{Ampl, Network, Sample};
 use machlearn::neuralnetwork;
 use machlearn::vector::Vector;
+use machlearn::matrix::Matrix;
+use std::path::PathBuf;
+use std::str::FromStr;
 
 const IMAGE_WIDTH_HEIGHT: usize = 28;
 const IMAGE_PIXEL_COUNT: usize = IMAGE_WIDTH_HEIGHT * IMAGE_WIDTH_HEIGHT;
@@ -23,25 +26,25 @@ type ImageArray = [u8; IMAGE_PIXEL_COUNT];
 // https://www.kaggle.com/sylvia23/mnist-data-for-digit-recognation
 
 fn main() {
-    // let mut network = Network::new_logistic_sigmoid(vec!(IMAGE_PIXEL_COUNT, 10)); // single layer
-    let mut network = Network::new_logistic_sigmoid(vec!(IMAGE_PIXEL_COUNT, IMAGE_PIXEL_COUNT, 10));
-    network.set_random_weights();
-
+    let mut network = Network::new_logistic_sigmoid(vec!(IMAGE_PIXEL_COUNT, 10)); // single layer
+    // let mut network = Network::new_logistic_sigmoid(vec!(IMAGE_PIXEL_COUNT, IMAGE_PIXEL_COUNT, 10));
     print_data_examples();
 
-    // print_samples(&mut get_learning_samples().take(1000));
+    let read_from_file = false;
+    if !read_from_file {
+        network.set_random_weights();
 
-    let start = Instant::now();
-    println!("learning");
+        const LEARNING_SAMPLES: usize = 10_000;
+        neuralnetwork::run_learning_iterations(&mut network, get_learning_samples().take(LEARNING_SAMPLES), 0.3);
+    } else {
+        read_network_from_file(&mut network, "mnist_twolayer_weights.json");
+        // read_network_from_file(&mut network, "mnist_singlelayer_weights.json");
+        // println!("network \n{}", network);
+    }
 
-    const LEARNING_SAMPLES: usize = 60_000;
-    neuralnetwork::run_learning_iterations(&mut network, get_learning_samples().take(LEARNING_SAMPLES), 0.3);
-
-    let duration = start.elapsed();
-    println!("duration {:.2?}", duration);
-
-    let start = Instant::now();
-    println!("testing");
+    if true {
+        neuralnetwork::run_and_print_learning_iterations(&mut network, get_learning_samples().take(20), 0.3);
+    }
 
     const TEST_SAMPLES: usize = 1000;
     // let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
@@ -49,9 +52,6 @@ fn main() {
 
     test_correct_percentage(&network, get_test_samples().take(20).par_bridge(), true);
     let pct_correct = test_correct_percentage(&network, get_test_samples().take(TEST_SAMPLES).par_bridge(), false);
-
-    let duration = start.elapsed();
-    println!("duration {:.2?}", duration);
 
     println!("error squared: {:.5}", errsqr);
     println!("% correct: {:.2}", pct_correct);
@@ -63,9 +63,21 @@ fn main() {
 
 fn write_network_to_file(network: &Network) {
     let json = serde_json::to_string(&network.copy_all_weights()).expect("error serializing");
-    let mut file = fs::File::create("networkweights.json").expect("error creating file");
+    let filepath = PathBuf::from_str("mnist_tmp_weights.json").expect("error creating pathbuf");
+    let mut file = fs::File::create(&filepath).expect("error creating file");
     file.write_all(json.as_bytes()).expect("error writing");
     file.flush().unwrap();
+    println!("File written {}", fs::canonicalize(&filepath).unwrap().to_str().unwrap());
+}
+
+fn read_network_from_file(network : &mut Network, filename: &str) {
+    let mut file = fs::File::open(filename).expect("error opening file");
+    let mut json = String::new();
+    file.read_to_string(&mut json);
+    let weights : Vec<Matrix<Ampl>> = serde_json::from_str(&json).expect("error parsing json");
+    for weightenum in weights.into_iter().enumerate() {
+        network.set_weights(weightenum.0, weightenum.1);
+    }
 }
 
 pub fn test_correct_percentage(network: &Network, samples: impl ParallelIterator<Item=Sample>, print: bool) -> f64 {

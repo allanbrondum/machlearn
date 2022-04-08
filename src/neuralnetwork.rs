@@ -1,23 +1,21 @@
 //! Simple multilayer fully connected neural network using backpropagation of errors (gradient descent) for learning.
 
 use std::fmt::{Display, Formatter};
-use serde::{Serialize, Deserialize};
 use crate::vector::{Vector};
 use crate::matrix::{Matrix};
 use rand::Rng;
 use rayon::prelude::*;
+use std::time::Instant;
 
 pub type Ampl = f64;
 
 #[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
 pub struct Layer
 {
     state: Vector<Ampl>
 }
 
 #[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
 pub struct Connector
 {
     weights: Matrix<Ampl>,
@@ -130,7 +128,7 @@ impl Network {
         state
     }
 
-    pub fn backpropagate(&mut self, input: Vector<Ampl>, output: &Vector<Ampl>, ny: Ampl) {
+    pub fn backpropagate(&mut self, input: Vector<Ampl>, output: &Vector<Ampl>, ny: Ampl, print: bool) {
         if input.len() != self.layers.first().unwrap().state.len() {
             panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().state.len())
         }
@@ -145,15 +143,40 @@ impl Network {
             *output.last() = 1.0;
         }
 
+        if print {
+            let diff = output.clone() - self.get_output();
+            let errsqr = &diff * &diff;
+            println!("errsqr: {:.4}", errsqr);
+        }
+
         // last connector
+        let mut normalize = false;
         {
             let layer1 = &self.layers[self.layers.len() - 2];
             let layer2 = self.layers.last().unwrap();
             let last_connector = self.connectors.last_mut().unwrap();
             let tmp = &last_connector.weights * &layer1.state;
-            for i in 0..last_connector.back_propagation_delta.len() {
-                last_connector.back_propagation_delta[i] = -2. * (self.sigmoid_derived)(tmp[i]) * (output[i] - layer2.state[i]);
+            if print {
+                println!("");
             }
+            for i in 0..last_connector.back_propagation_delta.len() {
+                normalize |= (output[i] - layer2.state[i]).abs() > 0.5;
+
+                last_connector.back_propagation_delta[i] = -2. * (self.sigmoid_derived)(tmp[i]) * (output[i] - layer2.state[i]);
+                if print {
+                    println!("sigder {}: {:.4} {:.4} {:.4} {:.4} {:.4} {:.4}",
+                             i,
+                             last_connector.back_propagation_delta[i],
+                             output[i] - layer2.state[i],
+                             (self.sigmoid_derived)(tmp[i]),
+                             tmp[i],
+                             output[i],
+                             layer2.state[i]);
+                }
+            }
+        }
+        if print {
+            println!("normalize: {}", normalize);
         }
 
         // the other connectors
@@ -172,12 +195,23 @@ impl Network {
             let connector = &mut self.connectors[connector_index];
             let layer1 = &self.layers[connector_index];
 
-            // println!("backpropagation: {}", connector.back_propagation_delta);
+            // if print {
+            //     println!("backpropagation: {}", connector.back_propagation_delta);
+            // }
 
             let deltam = connector.back_propagation_delta.clone().to_matrix();
             let statem = layer1.state.clone().to_matrix();
             let statemt = statem.transpose();
             let mut tmp = deltam.mat_mul(&statemt);
+            if normalize {
+                let normsqr = tmp.scalar_prod(&tmp);
+                if print {
+                    println!("normsq: {:.4}", normsqr);
+                }
+                if normsqr == 0.0 {
+                    tmp *= 1. / normsqr.sqrt();
+                }
+            }
             tmp *= -ny;
             connector.weights += tmp;
         }
@@ -275,14 +309,31 @@ impl Display for Network
 /// Sample tuple, .0: input, .1: output
 pub struct Sample(pub Vector<Ampl>, pub Vector<Ampl>);
 
+pub fn run_and_print_learning_iterations(network: &mut Network, samples: impl Iterator<Item=Sample>, ny: Ampl) {
+    run_learning_iterations_impl(network, samples, ny, true);
+}
+
 pub fn run_learning_iterations(network: &mut Network, samples: impl Iterator<Item=Sample>, ny: Ampl) {
+  run_learning_iterations_impl(network, samples, ny, false);
+}
+
+fn run_learning_iterations_impl(network: &mut Network, samples: impl Iterator<Item=Sample>, ny: Ampl, print: bool) {
+    let start = Instant::now();
+    println!("learning");
+
     for sample in samples {
-        network.backpropagate(sample.0, &sample.1, ny);
+        network.backpropagate(sample.0, &sample.1, ny, print);
         // println!("network {}", network);
     }
+
+    let duration = start.elapsed();
+    println!("duration {:.2?}", duration);
 }
 
 pub fn run_test_iterations(network: &Network, samples: impl Iterator<Item=Sample>) -> Ampl {
+    let start = Instant::now();
+    println!("testing");
+
     let mut errsqr_sum = 0.;
     let mut samples_count = 0;
     for sample in samples {
@@ -290,14 +341,25 @@ pub fn run_test_iterations(network: &Network, samples: impl Iterator<Item=Sample
         errsqr_sum += errsqr;
         samples_count += 1;
     }
+
+    let duration = start.elapsed();
+    println!("duration {:.2?}", duration);
+
     // println!("errsqr {} samples_count {}", errsqr_sum, samples_count);
     errsqr_sum / samples_count as Ampl
 }
 
 pub fn run_test_iterations_parallel(network: &Network, samples: impl ParallelIterator<Item=Sample>) -> Ampl {
+    let start = Instant::now();
+    println!("testing");
+
     let result: (i32, Ampl) = samples.map(|sample| {
         (1, get_errsqr(network, &sample))
     }).reduce(|| (0, 0.0), |x, y| (x.0 + y.0, x.1 + y.1));
+
+    let duration = start.elapsed();
+    println!("duration {:.2?}", duration);
+
     result.1 / result.0 as Ampl
 }
 

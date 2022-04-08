@@ -104,6 +104,19 @@ impl<T> Matrix<T>
         result
     }
 
+    pub fn scalar_prod(&self, rhs: &Matrix<T>) -> T {
+        if self.dimensions() != rhs.dimensions() {
+            panic!("Cannot make scalar product of matrices {} and {} because of dimensions", self.dimensions(), rhs.dimensions());
+        }
+        let mut result = T::default();
+        for row in 0..self.row_count() {
+            for col in 0..self.column_count() {
+                result += self[(row, col)] * rhs[(row, col)];
+            }
+        }
+        result
+    }
+
     pub fn transpose(self) -> Matrix<T>
         where Self: Sized
     {
@@ -276,6 +289,7 @@ mod tests {
     use crate::matrix::*;
     use itertools::Itertools;
     use std::borrow::Borrow;
+    use crate::vector::Vector;
 
     #[test]
     fn equals() {
@@ -843,6 +857,24 @@ mod tests {
         a *= 2;
 
         assert_eq!(result, a);
+    }
+
+    #[test]
+    fn scalar_product() {
+        let mut a = Matrix::new( 2, 3);
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
+
+        let mut b = Matrix::new( 2, 3);
+        b[(0,0)] = 3;
+        b[(0,1)] = 2;
+        b[(1,0)] = 2;
+        b[(1,1)] = 2;
+
+        let result = a.scalar_prod(&b);
+        assert_eq!(result, 3 + 4 + 6 + 8);
     }
 
     #[test]
