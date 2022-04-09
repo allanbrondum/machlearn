@@ -41,6 +41,14 @@ impl Layer {
         &self.weights
     }
 
+    fn get_input_dimension(&self) -> usize {
+        self.weights.dimensions().columns
+    }
+
+    fn get_output_dimension(&self) -> usize {
+        self.weights.dimensions().rows
+    }
+
     pub fn set_random_weights(&mut self) {
         let mut rng = rand::thread_rng();
         self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
@@ -57,13 +65,10 @@ impl Layer {
         self.weights.mul_vector(input).apply(sigmoid)
     }
 
-    fn get_input_dimension(&self) -> usize {
-        self.weights.dimensions().columns
-    }
+    // fn backpropagate(&mut self, backpropagate_gamma: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl) -> &Vector<Ampl> {
+    //     self.output_state = self.evaluate_input_no_state_change(input, sigmoid);
+    // }
 
-    fn get_output_dimension(&self) -> usize {
-        self.weights.dimensions().rows
-    }
 
 }
 

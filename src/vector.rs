@@ -33,9 +33,22 @@ impl<T> Vector<T>
         if v1.len() != v2.len() {
             panic!("Vector 1 length {} not equal to vector 2 length {}", v1.len(), v2.len())
         }
-        self.iter().zip(rhs.iter())
+        v1.iter().zip(v2.iter())
             .map(|pair| *pair.0 * *pair.1)
             .sum()
+    }
+
+    /// Component wise multiplicaiton
+    pub fn mul_comp(&self, rhs: &Vector<T>) -> Vector<T> {
+        let v1 = self;
+        let v2 = rhs;
+        if v1.len() != v2.len() {
+            panic!("Vector 1 length {} not equal to vector 2 length {}", v1.len(), v2.len())
+        }
+        let vec: Vec<T> = v1.iter().zip(v2.iter())
+            .map(|pair| *pair.0 * *pair.1)
+            .collect();
+        Vector::from_vec(vec)
     }
 
     pub fn iter(&self) -> impl Iterator<Item=&T> {
@@ -340,6 +353,24 @@ mod tests {
         a *= 2.;
 
         assert_eq!(result, a);
+
+    }
+
+    #[test]
+    fn mul_comp() {
+        let mut a = Vector::new( 2);
+        a[0] = 1;
+        a[1] = 2;
+
+        let mut b = Vector::new( 2);
+        b[0] = 2;
+        b[1] = 3;
+
+        let mut result = Vector::new( 2);
+        result[0] = 2;
+        result[1] = 6;
+
+        assert_eq!(result, a.mul_comp(&b));
 
     }
 
