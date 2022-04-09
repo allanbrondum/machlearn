@@ -27,7 +27,7 @@ impl<T> Vector<T>
         self.elements.len()
     }
 
-    pub fn vec_prod(&self, rhs: &Vector<T>) -> T {
+    pub fn scalar_prod(&self, rhs: &Vector<T>) -> T {
         let v1 = self;
         let v2 = rhs;
         if v1.len() != v2.len() {
@@ -311,7 +311,7 @@ mod tests {
         b[0] = 2.;
         b[1] = 3.;
 
-        assert_eq!(8.5, a.vec_prod(&b));
+        assert_eq!(8.5, a.scalar_prod(&b));
     }
 
     #[test]

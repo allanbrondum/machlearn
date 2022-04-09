@@ -73,7 +73,7 @@ impl<T> Mul for Matrix<T>
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
-        self.mat_mul(&rhs)
+        self.mul_mat(&rhs)
     }
 }
 
@@ -83,7 +83,7 @@ impl<T> Mul for &Matrix<T>
     type Output = Matrix<T>;
 
     fn mul(self, rhs: Self) -> Matrix<T> {
-        self.mat_mul(rhs)
+        self.mul_mat(rhs)
     }
 }
 

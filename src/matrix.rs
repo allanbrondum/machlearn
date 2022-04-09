@@ -4,6 +4,7 @@ use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul};
 use std::fmt::{Display, Formatter};
 use serde::{Serialize, Deserialize};
 use std::iter::Sum;
+use crate::vector::Vector;
 
 pub mod arit;
 
@@ -85,7 +86,8 @@ impl<T> Matrix<T>
         StrideIter::new(self.elements.as_slice(), offset, self.row_stride, self.dimensions.rows)
     }
 
-    pub fn mat_mul(&self, rhs: &Matrix<T>) -> Matrix<T> {
+    /// Matrix multiplication with another matrix
+    pub fn mul_mat(&self, rhs: &Matrix<T>) -> Matrix<T> {
         let m1 = self;
         let m2 = rhs;
         if m1.dimensions().columns != m2.dimensions().rows {
@@ -104,6 +106,7 @@ impl<T> Matrix<T>
         result
     }
 
+    /// Sum of component-wise multiplication (like vector dot product)
     pub fn scalar_prod(&self, rhs: &Matrix<T>) -> T {
         if self.dimensions() != rhs.dimensions() {
             panic!("Cannot make scalar product of matrices {} and {} because of dimensions", self.dimensions(), rhs.dimensions());
@@ -113,6 +116,36 @@ impl<T> Matrix<T>
             for col in 0..self.column_count() {
                 result += self[(row, col)] * rhs[(row, col)];
             }
+        }
+        result
+    }
+
+    /// Multiply matrix with vector (from right hand side). Same as matrix multiplication considering
+    /// the given vector as a matrix with a single column.
+    pub fn mul_vector(&self, rhs: &Vector<T>) -> Vector<T> {
+        if self.column_count() != rhs.len() {
+            panic!("Cannot multiply matrix {} with vector {} because of dimensions", self.dimensions(), rhs.len());
+        }
+        let mut result = Vector::<T>::new(self.row_count());
+        for row in 0..self.row_count() {
+            result[row] = self.row_iter(row).zip(rhs.iter())
+                .map(|pair| *pair.0 * *pair.1)
+                .sum();
+        }
+        result
+    }
+
+    /// Multiply matrix with vector from left hand side. Same as matrix multiplication considering
+    /// the given vector as a matrix with a single row.
+    pub fn mul_vector_lhs(&self, rhs: &Vector<T>) -> Vector<T> {
+        if rhs.len() != self.row_count() {
+            panic!("Cannot multiply vector {} with matrix {} because of dimensions", rhs.len(), self.dimensions());
+        }
+        let mut result = Vector::<T>::new(self.column_count());
+        for column in 0..self.column_count() {
+            result[column] = self.col_iter(column).zip(rhs.iter())
+                .map(|pair| *pair.0 * *pair.1)
+                .sum();
         }
         result
     }
@@ -640,7 +673,7 @@ mod tests {
         product[(1,0)] = 15;
         product[(1,1)] = 22;
 
-        assert_eq!(product, a.mat_mul(&b));
+        assert_eq!(product, a.mul_mat(&b));
     }
 
     #[test]
@@ -687,7 +720,8 @@ mod tests {
         product[1] = 11;
         product[2] = 0;
 
-        assert_eq!(product, a * b);
+        assert_eq!(product, a.clone() * b.clone());
+        assert_eq!(product, a.mul_vector(&b));
     }
 
     #[test]
@@ -732,7 +766,8 @@ mod tests {
         product[2] = 0;
         product[3] = 0;
 
-        assert_eq!(product, b * a);
+        assert_eq!(product, b.clone() * a.clone());
+        assert_eq!(product, a.mul_vector_lhs(&b));
     }
 
     #[test]

@@ -92,7 +92,7 @@ impl<T> Mul for &Vector<T>
     type Output = T;
 
     fn mul(self, rhs: Self) -> T {
-       self.vec_prod(rhs)
+       self.scalar_prod(rhs)
     }
 }
 
@@ -112,16 +112,7 @@ impl<T> Mul<&Vector<T>> for &Matrix<T>
     type Output = Vector<T>;
 
     fn mul(self, rhs: &Vector<T>) -> Vector<T> {
-        if self.column_count() != rhs.len() {
-            panic!("Cannot multiply matrix {} with vector {} because of dimensions", self.dimensions(), rhs.len());
-        }
-        let mut result = Vector::<T>::new(self.row_count());
-        for row in 0..self.row_count() {
-            result[row] = self.row_iter(row).zip(rhs.iter())
-                .map(|pair| *pair.0 * *pair.1)
-                .sum();
-        }
-        result
+        self.mul_vector(rhs)
     }
 }
 
@@ -141,15 +132,6 @@ impl<T> Mul<&Matrix<T>> for &Vector<T>
     type Output = Vector<T>;
 
     fn mul(self, rhs: &Matrix<T>) -> Vector<T> {
-        if self.len() != rhs.row_count() {
-            panic!("Cannot multiply vector {} with matrix {} because of dimensions", self.len(), rhs.dimensions());
-        }
-        let mut result = Vector::<T>::new(rhs.column_count());
-        for column in 0..rhs.column_count() {
-            result[column] = rhs.col_iter(column).zip(self.iter())
-                .map(|pair| *pair.0 * *pair.1)
-                .sum();
-        }
-        result
+        rhs.mul_vector_lhs(&self)
     }
 }

@@ -207,7 +207,7 @@ impl Network {
             let deltam = connector.back_propagation_delta.clone().to_matrix();
             let statem = layer1.state.clone().to_matrix();
             let statemt = statem.transpose();
-            let mut tmp = deltam.mat_mul(&statemt);
+            let mut tmp = deltam.mul_mat(&statemt);
             if normalize {
                 let normsqr = tmp.scalar_prod(&tmp);
                 if print {

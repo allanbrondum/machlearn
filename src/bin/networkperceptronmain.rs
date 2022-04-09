@@ -30,7 +30,7 @@ fn main() {
             // input[rng.gen_range(0..8)] = rng.gen();
             // let output = if perceptron.vec_prod(&input) > 0. {1.0} else {0.0};
             // println!("input {}", input);
-            let output = match perceptron.vec_prod(&input) {
+            let output = match perceptron.scalar_prod(&input) {
                 x if x > 0. => 1.0,
                 _ => 0.0,
             };
