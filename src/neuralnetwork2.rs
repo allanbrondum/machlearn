@@ -18,23 +18,19 @@ pub type Ampl = f64;
 #[derive(Debug, Clone)]
 pub struct Layer
 {
-    backpropagation_gamma: Vector<Ampl>,
+    // backpropagation_gamma: Vector<Ampl>,
     weights: Matrix<Ampl>,
-    output_state: Vector<Ampl>,
+    // output_state: Vector<Ampl>,
 }
 
 impl Layer {
 
     pub fn new(input_dimension: usize, output_dimension: usize) -> Layer {
         Layer {
-            backpropagation_gamma: Vector::new((input_dimension)),
+            // backpropagation_gamma: Vector::new((input_dimension)),
             weights: Matrix::new(input_dimension, output_dimension),
-            output_state: Vector::new(output_dimension),
+            // output_state: Vector::new(output_dimension),
         }
-    }
-
-    pub fn get_state(&self) -> &Vector<Ampl> {
-        &self.output_state
     }
 
     pub fn get_weights(&self) -> &Matrix<Ampl> {
@@ -54,20 +50,21 @@ impl Layer {
         self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
     }
 
-    fn evaluate_input(&mut self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) {
-        self.output_state = self.evaluate_input_no_state_change(input, sigmoid);
-    }
+    // fn evaluate_input(&mut self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) {
+    //     self.output_state = self.evaluate_input_no_state_change(input, sigmoid);
+    // }
 
-    fn evaluate_input_no_state_change(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl> {
+    fn evaluate_input(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl> {
         if input.len() != self.get_input_dimension() {
             panic!("Input state length {} not equals to weights column count {}", input.len(), self.weights.dimensions().columns);
         }
         self.weights.mul_vector(input).apply(sigmoid)
     }
 
-    // fn backpropagate(&mut self, backpropagate_gamma: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl) -> &Vector<Ampl> {
-    //     self.output_state = self.evaluate_input_no_state_change(input, sigmoid);
-    // }
+    fn backpropagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl) -> Vector<Ampl> {
+        let delta_output = self.weights.mul_vector(input).apply(sigmoid_derived).mul_comp(gamma_output);
+        self.weights.mul_vector_lhs(&delta_output)
+    }
 
 
 }
@@ -75,7 +72,7 @@ impl Layer {
 #[derive(Debug, Clone)]
 pub struct Network
 {
-    input_state: Vector<Ampl>,
+    // input_state: Vector<Ampl>,
     layers: Vec<Layer>,
     sigmoid: fn(Ampl) -> Ampl,
     sigmoid_derived: fn(Ampl) -> Ampl,
@@ -114,35 +111,17 @@ pub fn sigmoid_logistic_derived(input: Ampl) -> Ampl {
 
 impl Network {
 
-    pub fn evaluate_input_state(&mut self, input: Vector<Ampl>) {
+    pub fn evaluate_input(&self, input: &Vector<Ampl>) -> Vector<Ampl> {
         if input.len() != self.layers.first().unwrap().get_input_dimension() {
             panic!("Input state length {} not equals to first layer input length {}", input.len(), self.layers.first().unwrap().get_input_dimension())
         }
-        self.input_state = input;
-        // if self.biases {
-        //     *self.layers[0].state.last() = 1.0;
-        // }
-        let mut state_iter = &self.input_state;
-        for layer in &mut self.layers {
-            layer.evaluate_input(state_iter, self.sigmoid);
-            state_iter = layer.get_state();
-            // if self.biases {
-            //     *self.layers[i + 1].state.last() = 1.0;
-            // }
-        }
-
-    }
-
-    pub fn evaluate_input_no_state_change(&self, input: &Vector<Ampl>) -> Vector<Ampl> {
-        if input.len() != self.layers.first().unwrap().get_input_dimension() {
-            panic!("Input state length {} not equals to first layer input length {}", input.len(), self.layers.first().unwrap().get_input_dimension())
-        }
+        // evaluate states feed forward through layers
         let mut state= input.clone();
         // if self.biases {
         //     *state.last() = 1.0;
         // }
         for layer in &self.layers {
-            state = layer.evaluate_input_no_state_change(&state, self.sigmoid);
+            state = layer.evaluate_input(&state, self.sigmoid);
             // if self.biases {
             //     *state.last() = 1.0;
             // }
@@ -150,27 +129,22 @@ impl Network {
         state
     }
 
-    // pub fn backpropagate(&mut self, input: Vector<Ampl>, output: &Vector<Ampl>, ny: Ampl, print: bool) {
-    //     if input.len() != self.layers.first().unwrap().state.len() {
-    //         panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().state.len())
-    //     }
-    //     if output.len() != self.layers.last().unwrap().state.len() {
-    //         panic!("Output state length {} not equals to last layer state vector length {}", output.len(), self.layers.last().unwrap().state.len())
-    //     }
-    //
-    //     self.evaluate_input_state(input);
-    //
-    //     let mut output = output.clone();
-    //     if self.biases {
-    //         *output.last() = 1.0;
-    //     }
-    //
-    //     if print {
-    //         let diff = output.clone() - self.get_output();
-    //         let errsqr = &diff * &diff;
-    //         println!("errsqr: {:.4}", errsqr);
-    //     }
-    //
+    pub fn backpropagate(&mut self, input: &Vector<Ampl>, output: &Vector<Ampl>, ny: Ampl, print: bool) {
+        if input.len() != self.layers.first().unwrap().get_input_dimension() {
+            panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().get_input_dimension())
+        }
+        if output.len() != self.layers.last().unwrap().get_output_dimension() {
+            panic!("Output state length {} not equals to last layer state vector length {}", output.len(), self.layers.last().unwrap().get_output_dimension())
+        }
+
+        // first evaluate states using feed forward
+        let mut states = Vec::new();
+        states.push(input.clone());
+        for layer in &mut self.layers {
+            states.push(layer.evaluate_input(states.last().unwrap(), self.sigmoid));
+        }
+    }
+
     //     // last connector
     //     let mut normalize = false;
     //     {
@@ -263,7 +237,7 @@ impl Network {
             layers.push(Layer::new(dimensions[i - 1], dimensions[i]));
         }
         Network {
-            input_state: Vector::new(dimensions[0]),
+            // input_state: Vector::new(dimensions[0]),
             layers,
             sigmoid,
             sigmoid_derived,
@@ -275,10 +249,6 @@ impl Network {
         &self.layers
     }
 
-    pub fn get_output(&self) -> &Vector<Ampl> {
-        self.layers.last().unwrap().get_state()
-    }
-
     pub fn get_layer_count(&self) -> usize {
         self.layers.len()
     }
@@ -288,7 +258,7 @@ impl Display for Network
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 
-        write!(f, "input state: {}\n\n", self.input_state)?;
+        // write!(f, "input state: {}\n\n", self.input_state)?;
 
         for layer in self.layers.iter().enumerate() {
             write!(f, "layer {}\n{}", layer.0, layer.1)?;
@@ -301,9 +271,9 @@ impl Display for Network
 impl Display for Layer
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "backpropagation\n{}", self.backpropagation_gamma)?;
+        // write!(f, "backpropagation\n{}", self.backpropagation_gamma)?;
         write!(f, "weights\n{}", self.weights)?;
-        write!(f, "output state: {}\n", self.output_state)?;
+        // write!(f, "output state: {}\n", self.output_state)?;
 
         std::fmt::Result::Ok(())
     }
