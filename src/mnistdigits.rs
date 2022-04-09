@@ -66,7 +66,7 @@ fn print_samples(samples: &mut impl Iterator<Item=Sample>) {
     for sample in samples {
         println!("Output: {}", sample.1);
         println!("Image:"); // print as ascii art
-        // images are u8 grayscale
+        // samples are 0..1 grayscale
         print_image(sample.0.iter().map(|val| (val * 256.) as u8));
     }
 }
