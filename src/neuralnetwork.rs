@@ -6,6 +6,11 @@ use crate::matrix::{Matrix};
 use rand::Rng;
 use rayon::prelude::*;
 use std::time::Instant;
+use std::path::{PathBuf, Path};
+use std::fs;
+use std::io::Write;
+use std::io::BufRead;
+use std::io::Read;
 
 pub type Ampl = f64;
 
@@ -375,14 +380,22 @@ fn get_errsqr(network: &Network, sample: &Sample) -> Ampl {
     errsqr
 }
 
-pub fn run_learning_and_test_iterations(
-    network: &mut Network,
-    learning_samples: impl Iterator<Item=Sample>,
-    test_samples: impl Iterator<Item=Sample>,
-    ny: Ampl) -> Ampl
-{
-    run_learning_iterations(network, learning_samples, ny);
-    run_test_iterations(network, test_samples)
+pub fn write_network_to_file(network: &Network, filepath: impl AsRef<Path>) {
+    let json = serde_json::to_string(&network.copy_all_weights()).expect("error serializing");
+    let mut file = fs::File::create(&filepath).expect("error creating file");
+    file.write_all(json.as_bytes()).expect("error writing");
+    file.flush().unwrap();
+    println!("File written {}", fs::canonicalize(&filepath).unwrap().to_str().unwrap());
+}
+
+pub fn read_network_from_file(network : &mut Network, filepath: impl AsRef<Path>) {
+    let mut file = fs::File::open(filepath).expect("error opening file");
+    let mut json = String::new();
+    file.read_to_string(&mut json);
+    let weights : Vec<Matrix<Ampl>> = serde_json::from_str(&json).expect("error parsing json");
+    for weightenum in weights.into_iter().enumerate() {
+        network.set_weights(weightenum.0, weightenum.1);
+    }
 }
 
 #[cfg(test)]

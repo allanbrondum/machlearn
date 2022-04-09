@@ -15,69 +15,45 @@ use machlearn::neuralnetwork::{Ampl, Network, Sample};
 use machlearn::neuralnetwork;
 use machlearn::vector::Vector;
 use machlearn::matrix::Matrix;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::str::FromStr;
-
-const IMAGE_WIDTH_HEIGHT: usize = 28;
-const IMAGE_PIXEL_COUNT: usize = IMAGE_WIDTH_HEIGHT * IMAGE_WIDTH_HEIGHT;
-type ImageArray = [u8; IMAGE_PIXEL_COUNT];
-
-// http://yann.lecun.com/exdb/mnist/
-// https://www.kaggle.com/sylvia23/mnist-data-for-digit-recognation
+use machlearn::mnistdigits;
 
 fn main() {
-    let mut network = Network::new_logistic_sigmoid(vec!(IMAGE_PIXEL_COUNT, 10)); // single layer
+    let mut network = Network::new_logistic_sigmoid(vec!(mnistdigits::IMAGE_PIXEL_COUNT, 10)); // single layer
     // let mut network = Network::new_logistic_sigmoid(vec!(IMAGE_PIXEL_COUNT, IMAGE_PIXEL_COUNT, 10));
-    print_data_examples();
+    mnistdigits::print_data_examples();
 
     let read_from_file = false;
     if !read_from_file {
         network.set_random_weights();
 
-        const LEARNING_SAMPLES: usize = 10_000;
-        neuralnetwork::run_learning_iterations(&mut network, get_learning_samples().take(LEARNING_SAMPLES), 0.3);
+        const LEARNING_SAMPLES: usize = 1_000;
+        // const LEARNING_SAMPLES: usize = 10_000;
+        neuralnetwork::run_learning_iterations(&mut network, mnistdigits::get_learning_samples().take(LEARNING_SAMPLES), 0.3);
     } else {
-        read_network_from_file(&mut network, "mnist_twolayer_weights.json");
+        neuralnetwork::read_network_from_file(&mut network, "mnist_twolayer_weights.json");
         // read_network_from_file(&mut network, "mnist_singlelayer_weights.json");
         // println!("network \n{}", network);
     }
 
-    if true {
-        neuralnetwork::run_and_print_learning_iterations(&mut network, get_learning_samples().take(20), 0.3);
+    if false {
+        neuralnetwork::run_and_print_learning_iterations(&mut network, mnistdigits::get_learning_samples().take(20), 0.3);
     }
 
     const TEST_SAMPLES: usize = 1000;
     // let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
-    let errsqr = neuralnetwork::run_test_iterations_parallel(&network, get_test_samples().take(TEST_SAMPLES).par_bridge());
+    let errsqr = neuralnetwork::run_test_iterations_parallel(&network, mnistdigits::get_test_samples().take(TEST_SAMPLES).par_bridge());
 
-    test_correct_percentage(&network, get_test_samples().take(20).par_bridge(), true);
-    let pct_correct = test_correct_percentage(&network, get_test_samples().take(TEST_SAMPLES).par_bridge(), false);
+    test_correct_percentage(&network, mnistdigits::get_test_samples().take(20).par_bridge(), true);
+    let pct_correct = test_correct_percentage(&network, mnistdigits::get_test_samples().take(TEST_SAMPLES).par_bridge(), false);
 
     println!("error squared: {:.5}", errsqr);
     println!("% correct: {:.2}", pct_correct);
 
     // println!("network: {}", network);
 
-    write_network_to_file(&network);
-}
-
-fn write_network_to_file(network: &Network) {
-    let json = serde_json::to_string(&network.copy_all_weights()).expect("error serializing");
-    let filepath = PathBuf::from_str("mnist_tmp_weights.json").expect("error creating pathbuf");
-    let mut file = fs::File::create(&filepath).expect("error creating file");
-    file.write_all(json.as_bytes()).expect("error writing");
-    file.flush().unwrap();
-    println!("File written {}", fs::canonicalize(&filepath).unwrap().to_str().unwrap());
-}
-
-fn read_network_from_file(network : &mut Network, filename: &str) {
-    let mut file = fs::File::open(filename).expect("error opening file");
-    let mut json = String::new();
-    file.read_to_string(&mut json);
-    let weights : Vec<Matrix<Ampl>> = serde_json::from_str(&json).expect("error parsing json");
-    for weightenum in weights.into_iter().enumerate() {
-        network.set_weights(weightenum.0, weightenum.1);
-    }
+    neuralnetwork::write_network_to_file(&network,"mnist_tmp_weights.json");
 }
 
 pub fn test_correct_percentage(network: &Network, samples: impl ParallelIterator<Item=Sample>, print: bool) -> f64 {
@@ -99,98 +75,4 @@ fn index_of_max(vector: &Vector<Ampl>) -> usize {
     vector.iter().enumerate().max_by(|x, y| if x.1 > y.1 { Ordering::Greater } else { Ordering::Less }).unwrap().0
 }
 
-fn get_learning_samples() -> impl Iterator<Item=Sample> {
-    transform_to_samples(get_learning_data())
-}
-
-fn get_test_samples() -> impl Iterator<Item=Sample> {
-    transform_to_samples(get_test_data())
-}
-
-fn transform_to_samples(data_sets: impl Iterator<Item=(u8, ImageArray)>) -> impl Iterator<Item=Sample> {
-    data_sets.map(|data_set| {
-        let input: Vec<Ampl> = data_set.1.iter().map(|val| *val as Ampl / 256.).collect(); // map to float value 0..1
-        let output: Vec<Ampl> = (0..10).map(|digit| if digit == data_set.0 {1.} else {0.}).collect();
-        Sample(Vector::from_vec(input), Vector::from_vec(output))
-    })
-}
-
-fn print_data_examples() {
-    let mut learning_data = get_learning_data();
-
-    const SAMPLE_SIZE: usize = 10;
-
-    print_data_series(&mut learning_data.by_ref().take(SAMPLE_SIZE));
-
-    println!("Count learning data: {}", learning_data.count() + SAMPLE_SIZE);
-
-    let mut test_data = get_test_data();
-    print_data_series(&mut test_data.by_ref().take(SAMPLE_SIZE));
-
-    println!("Count test data: {}", test_data.count() + SAMPLE_SIZE);
-}
-
-fn print_data_series(label_bytes: &mut impl Iterator<Item=(u8, ImageArray)>) {
-    for data_set in label_bytes {
-        println!("Label: {0:} {0:08b}", data_set.0);
-        println!("Image:"); // print as ascii art
-        // images are u8 grayscale
-        for line in data_set.1.chunks(IMAGE_WIDTH_HEIGHT) {
-            println!("{}", line.iter()
-                .map(|val| match val {
-                    0..=50 => ' ',
-                    51..=150 => '.',
-                    151..=200 => '+',
-                    201..=255 => '*',
-                    _ => panic!("Unhandled value {}", val) })
-                .format(""));
-        }
-    }
-}
-
-fn print_samples(samples: &mut impl Iterator<Item=Sample>) {
-    for sample in samples {
-        println!("Output: {}", sample.1);
-        println!("Image:"); // print as ascii art
-        // images are u8 grayscale
-        for line in sample.0.chunks(IMAGE_WIDTH_HEIGHT) {
-            println!("{}", line.iter()
-                .map(|val | match val * 256. {
-                    0.0..=50. => ' ',
-                    51.0..=150. => '.',
-                    151.0..=200. => '+',
-                    201.0..=255. => '*',
-                    _ => panic!("Unhandled value {}", val) })
-                .format(""));
-        }
-    }
-}
-
-fn get_learning_data() -> impl Iterator<Item=(u8, ImageArray)> {
-    get_data_sets("mnistdigitdata/train-labels.idx1-ubyte", "mnistdigitdata/train-images.idx3-ubyte")
-}
-
-fn get_test_data() -> impl Iterator<Item=(u8, ImageArray)> {
-    get_data_sets("mnistdigitdata/t10k-labels.idx1-ubyte", "mnistdigitdata/t10k-images.idx3-ubyte")
-}
-
-fn get_data_sets(label_file_path: &str, image_file_path: &str) -> impl Iterator<Item=(u8, ImageArray)> {
-    let mut labels_read = BufReader::new(File::open(label_file_path).unwrap());
-    labels_read.by_ref().bytes().take(2 * 4).count(); // skip header
-    let mut label_bytes = labels_read.bytes();
-
-    let mut images_read = BufReader::new(File::open(image_file_path).unwrap());
-    images_read.by_ref().bytes().take(4 * 4).count(); // skip header
-
-    iter::from_fn(move || {
-        if let Some(label_result) = label_bytes.next() {
-            let mut image = [0u8; IMAGE_PIXEL_COUNT];
-            images_read.read_exact(&mut image).unwrap();
-
-            Some((label_result.unwrap(), image))
-        } else {
-            None
-        }
-    })
-}
 
