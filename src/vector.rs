@@ -94,7 +94,7 @@ impl<T> Vector<T>
 impl<T> Vector<T>
     where T: MatrixElement
 {
-
+    /// Apply function to each component
     pub fn apply(self, mut func: impl FnMut(T) -> T) -> Self {
         let mut ret = self;
         for elm in &mut ret.elements {

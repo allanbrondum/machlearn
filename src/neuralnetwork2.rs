@@ -46,12 +46,25 @@ impl Layer {
         self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
     }
 
-    fn evaluate_input(&mut self, input: Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) {
-        if input.len() != self.weights.dimensions().columns {
+    fn evaluate_input(&mut self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) {
+        self.output_state = self.evaluate_input_no_state_change(input, sigmoid);
+    }
+
+    fn evaluate_input_no_state_change(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl> {
+        if input.len() != self.get_input_dimension() {
             panic!("Input state length {} not equals to weights column count {}", input.len(), self.weights.dimensions().columns);
         }
-        self.output_state = self.weights.mul_vector(&input).apply(sigmoid);
+        self.weights.mul_vector(input).apply(sigmoid)
     }
+
+    fn get_input_dimension(&self) -> usize {
+        self.weights.dimensions().columns
+    }
+
+    fn get_output_dimension(&self) -> usize {
+        self.weights.dimensions().rows
+    }
+
 }
 
 #[derive(Debug, Clone)]
@@ -96,38 +109,41 @@ pub fn sigmoid_logistic_derived(input: Ampl) -> Ampl {
 
 impl Network {
 
-    // pub fn evaluate_input_state(&mut self, input: Vector<Ampl>) {
-    //     if input.len() != self.layers.first().unwrap().state.len() {
-    //         panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().state.len())
-    //     }
-    //     self.layers[0].state = input;
-    //     if self.biases {
-    //         *self.layers[0].state.last() = 1.0;
-    //     }
-    //     for i in 0..self.layers.len() - 1 {
-    //         self.layers[i + 1].state = (&self.connectors[i].weights * &self.layers[i].state).apply(self.sigmoid);
-    //         if self.biases {
-    //             *self.layers[i + 1].state.last() = 1.0;
-    //         }
-    //     }
-    // }
-    //
-    // pub fn evaluate_input_no_state_change(&self, input: &Vector<Ampl>) -> Vector<Ampl> {
-    //     if input.len() != self.layers.first().unwrap().state.len() {
-    //         panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().state.len())
-    //     }
-    //     let mut state= input.clone();
-    //     if self.biases {
-    //         *state.last() = 1.0;
-    //     }
-    //     for i in 0..self.layers.len() - 1 {
-    //         state = (&self.connectors[i].weights * &state).apply(self.sigmoid);
-    //         if self.biases {
-    //             *state.last() = 1.0;
-    //         }
-    //     }
-    //     state
-    // }
+    pub fn evaluate_input_state(&mut self, input: Vector<Ampl>) {
+        if input.len() != self.layers.first().unwrap().get_input_dimension() {
+            panic!("Input state length {} not equals to first layer input length {}", input.len(), self.layers.first().unwrap().get_input_dimension())
+        }
+        self.input_state = input;
+        // if self.biases {
+        //     *self.layers[0].state.last() = 1.0;
+        // }
+        let mut state_iter = &self.input_state;
+        for layer in &mut self.layers {
+            layer.evaluate_input(state_iter, self.sigmoid);
+            state_iter = layer.get_state();
+            // if self.biases {
+            //     *self.layers[i + 1].state.last() = 1.0;
+            // }
+        }
+
+    }
+
+    pub fn evaluate_input_no_state_change(&self, input: &Vector<Ampl>) -> Vector<Ampl> {
+        if input.len() != self.layers.first().unwrap().get_input_dimension() {
+            panic!("Input state length {} not equals to first layer input length {}", input.len(), self.layers.first().unwrap().get_input_dimension())
+        }
+        let mut state= input.clone();
+        // if self.biases {
+        //     *state.last() = 1.0;
+        // }
+        for layer in &self.layers {
+            state = layer.evaluate_input_no_state_change(&state, self.sigmoid);
+            // if self.biases {
+            //     *state.last() = 1.0;
+            // }
+        }
+        state
+    }
 
     // pub fn backpropagate(&mut self, input: Vector<Ampl>, output: &Vector<Ampl>, ny: Ampl, print: bool) {
     //     if input.len() != self.layers.first().unwrap().state.len() {
@@ -234,7 +250,9 @@ impl Network {
         sigmoid_derived: fn(Ampl) -> Ampl,
         biases: bool) -> Self
     {
-
+        if dimensions.len() < 2 {
+            panic!("Must have at least two dimensions, was {}", dimensions.len());
+        }
         let mut layers = Vec::new();
         for i in 1..dimensions.len() {
             layers.push(Layer::new(dimensions[i - 1], dimensions[i]));

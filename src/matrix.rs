@@ -137,13 +137,13 @@ impl<T> Matrix<T>
 
     /// Multiply matrix with vector from left hand side. Same as matrix multiplication considering
     /// the given vector as a matrix with a single row.
-    pub fn mul_vector_lhs(&self, rhs: &Vector<T>) -> Vector<T> {
-        if rhs.len() != self.row_count() {
-            panic!("Cannot multiply vector {} with matrix {} because of dimensions", rhs.len(), self.dimensions());
+    pub fn mul_vector_lhs(&self, lhs: &Vector<T>) -> Vector<T> {
+        if lhs.len() != self.row_count() {
+            panic!("Cannot multiply vector {} with matrix {} because of dimensions", lhs.len(), self.dimensions());
         }
         let mut result = Vector::<T>::new(self.column_count());
         for column in 0..self.column_count() {
-            result[column] = self.col_iter(column).zip(rhs.iter())
+            result[column] = self.col_iter(column).zip(lhs.iter())
                 .map(|pair| *pair.0 * *pair.1)
                 .sum();
         }
@@ -270,12 +270,14 @@ impl<T> Matrix<T>
     where T: MatrixElement
 {
 
+    /// Apply function to each component
     pub fn apply(self, func: impl FnMut(T) -> T) -> Self {
         let mut ret = self;
         ret.apply_ref(func);
         ret
     }
 
+    /// Apply function to each component
     pub fn apply_ref(&mut self, mut func: impl FnMut(T) -> T) {
         for elm in &mut self.elements {
             *elm = func(*elm);
