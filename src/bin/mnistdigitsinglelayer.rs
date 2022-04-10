@@ -28,9 +28,7 @@ fn main() {
 
     let read_from_file = false;
     if !read_from_file {
-        // let rng = rand::thread_rng();
-        let mut rng: Pcg64 = Seeder::from(0).make_rng();
-        network.set_random_weights_rng(&mut rng);
+        network.set_random_weights_seed(0);
 
         const LEARNING_SAMPLES: usize = 1_000;
         // const LEARNING_SAMPLES: usize = 10_000;

@@ -48,8 +48,7 @@ fn main() {
     let errsqr = neuralnetwork2::run_test_iterations(&network, test_samples);
 
     println!("error squared: {}", errsqr);
-
-    println!("network connector: {}", network.copy_all_weights()[0]);
+    println!("network:\n{}", network);
 
     // network.set_weights(0, network.get_weights(0).clone().apply(|x| 100. * x));
     // let test_samples = samples.clone().take(1000);

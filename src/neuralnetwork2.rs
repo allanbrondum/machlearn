@@ -1,6 +1,6 @@
 //! Simple multilayer fully connected neural network using backpropagation of errors (gradient descent) for learning.
 
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use crate::vector::{Vector};
 use crate::matrix::{Matrix};
 use rand::Rng;
@@ -12,29 +12,54 @@ use std::io::Write;
 use std::io::BufRead;
 use std::io::Read;
 use std::ops::Mul;
+use rand::rngs::ThreadRng;
+use rand_pcg::Pcg64;
+use rand_seeder::Seeder;
 use crate::neuralnetwork::{Ampl, Sample};
 
 #[derive(Debug, Clone)]
-pub struct Layer
+pub struct FullyConnectedLayer
 {
     weights: Matrix<Ampl>,
     biases: bool,
 }
 
-impl Layer {
+pub trait Layer : Display + Debug + Sync {
+    fn get_weights(&self) -> Vec<&Matrix<Ampl>>;
 
-    pub fn new(input_dimension: usize, output_dimension: usize, biases: bool) -> Layer {
-        Layer {
+    fn set_weights(&mut self, new_weights: Vec<Matrix<Ampl>>);
+
+    fn get_input_dimension(&self) -> usize;
+
+    fn get_output_dimension(&self) -> usize;
+
+    fn set_random_weights(&mut self);
+
+    fn set_random_weights_seed(&mut self, seed: u64);
+
+    fn evaluate_input(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl>;
+
+    fn backpropagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl>;
+}
+
+impl FullyConnectedLayer {
+    pub fn new(input_dimension: usize, output_dimension: usize, biases: bool) -> FullyConnectedLayer {
+        FullyConnectedLayer {
             weights: Matrix::new(output_dimension, input_dimension),
             biases,
         }
     }
+}
 
-    pub fn get_weights(&self) -> &Matrix<Ampl> {
-        &self.weights
+impl Layer for FullyConnectedLayer {
+
+    fn get_weights(&self) -> Vec<&Matrix<Ampl>> {
+        vec!(&self.weights)
     }
 
-    pub fn set_weights(&mut self, new_weights: Matrix<Ampl>) {
+    fn set_weights(&mut self, new_weights_vec: Vec<Matrix<Ampl>>) {
+        assert_eq!(1, new_weights_vec.len(), "Should only have one weight matrix, has {}", new_weights_vec.len());
+        let new_weights = new_weights_vec.into_iter().next().unwrap();
         if self.weights.dimensions() != new_weights.dimensions() {
             panic!("Weight dimensions for layer {} does not equals dimension of weights to set {}", self.weights.dimensions(), new_weights.dimensions());
         }
@@ -49,7 +74,13 @@ impl Layer {
         self.weights.dimensions().rows
     }
 
-    pub fn set_random_weights(&mut self, rng: &mut impl Rng) {
+    fn set_random_weights(&mut self) {
+        let mut rng = rand::thread_rng();
+        self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
+    }
+
+    fn set_random_weights_seed(&mut self, seed: u64) {
+        let mut rng: Pcg64 = Seeder::from(0).make_rng();
         self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
     }
 
@@ -71,10 +102,10 @@ impl Layer {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Network
 {
-    layers: Vec<Layer>,
+    layers: Vec<Box<dyn Layer>>,
     sigmoid: fn(Ampl) -> Ampl,
     sigmoid_derived: fn(Ampl) -> Ampl,
     biases: bool,
@@ -82,25 +113,22 @@ pub struct Network
 
 impl Network {
     pub fn set_random_weights(&mut self) {
-        let mut rng = rand::thread_rng();
-        self.set_random_weights_rng(&mut rng);
-    }
-
-    pub fn set_random_weights_rng(&mut self, rng: &mut impl Rng) {
         for layer in &mut self.layers {
-            layer.set_random_weights(rng);
+            layer.set_random_weights();
         }
     }
 
-    pub fn copy_all_weights(&self) -> Vec<Matrix<Ampl>> {
-        self.layers.iter().map(|layer| layer.get_weights().clone()).collect()
+    pub fn set_random_weights_seed(&mut self, seed: u64) {
+        for layer in &mut self.layers {
+            layer.set_random_weights_seed(seed);
+        }
     }
 
-    pub fn get_all_weights(&self) -> Vec<&Matrix<Ampl>> {
+    pub fn get_all_weights(&self) -> Vec<Vec<&Matrix<Ampl>>> {
         self.layers.iter().map(|layer| layer.get_weights()).collect()
     }
 
-    pub fn set_all_weights(&mut self, weights: Vec<Matrix<Ampl>>) {
+    pub fn set_all_weights(&mut self, weights: Vec<Vec<Matrix<Ampl>>>) {
         if self.layers.len() != weights.len() {
             panic!("Number of layers {} does not equals weights length {}", self.layers.len(), weights.len());
         }
@@ -184,14 +212,14 @@ impl Network {
 
 impl Network {
     pub fn new_logistic_sigmoid(dimensions: Vec<usize>) -> Self {
-        Network::new(dimensions, sigmoid_logistic, sigmoid_logistic_derived, false)
+        Self::new_fully_connected(dimensions, sigmoid_logistic, sigmoid_logistic_derived, false)
     }
 
     pub fn new_logistic_sigmoid_biases(dimensions: Vec<usize>) -> Self {
-        Network::new(dimensions, sigmoid_logistic, sigmoid_logistic_derived, true)
+        Self::new_fully_connected(dimensions, sigmoid_logistic, sigmoid_logistic_derived, true)
     }
 
-    pub fn new(
+    pub fn new_fully_connected(
         dimensions: Vec<usize>,
         sigmoid: fn(Ampl) -> Ampl,
         sigmoid_derived: fn(Ampl) -> Ampl,
@@ -202,8 +230,22 @@ impl Network {
         }
         let mut layers = Vec::new();
         for i in 1..dimensions.len() {
-            layers.push(Layer::new(dimensions[i - 1], dimensions[i], biases));
+            let boxed: Box<dyn Layer> = Box::new(FullyConnectedLayer::new(dimensions[i - 1], dimensions[i], biases));
+            layers.push(boxed);
         }
+        Self::new(layers, sigmoid, sigmoid_derived, biases)
+    }
+
+    pub fn new(
+        layers: Vec<Box<dyn Layer>>,
+        sigmoid: fn(Ampl) -> Ampl,
+        sigmoid_derived: fn(Ampl) -> Ampl,
+        biases: bool) -> Self
+    {
+        if layers.is_empty() {
+            panic!("Must have at least one layer");
+        }
+
         Network {
             layers,
             sigmoid,
@@ -212,7 +254,7 @@ impl Network {
         }
     }
 
-    pub fn get_layers(&self) -> &Vec<Layer> {
+    pub fn get_layers(&self) -> &Vec<Box<dyn Layer>> {
         &self.layers
     }
 
@@ -235,7 +277,7 @@ impl Display for Network
     }
 }
 
-impl Display for Layer
+impl Display for FullyConnectedLayer
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // write!(f, "backpropagation\n{}", self.backpropagation_gamma)?;
@@ -314,7 +356,7 @@ fn get_errsqr(network: &Network, sample: &Sample) -> Ampl {
 }
 
 pub fn write_network_to_file(network: &Network, filepath: impl AsRef<Path>) {
-    let json = serde_json::to_string(&network.get_all_weights()).expect("error serializing");
+    let json = serde_json::to_string_pretty( &network.get_all_weights()).expect("error serializing");
     let mut file = fs::File::create(&filepath).expect("error creating file");
     file.write_all(json.as_bytes()).expect("error writing");
     file.flush().unwrap();
@@ -325,6 +367,6 @@ pub fn read_network_from_file(network : &mut Network, filepath: impl AsRef<Path>
     let mut file = fs::File::open(filepath).expect("error opening file");
     let mut json = String::new();
     file.read_to_string(&mut json);
-    let weights : Vec<Matrix<Ampl>> = serde_json::from_str(&json).expect("error parsing json");
+    let weights : Vec<Vec<Matrix<Ampl>>> = serde_json::from_str(&json).expect("error parsing json");
     network.set_all_weights(weights);
 }

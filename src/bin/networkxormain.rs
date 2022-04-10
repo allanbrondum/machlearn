@@ -14,9 +14,7 @@ use machlearn::vector::Vector;
 
 fn main() {
     let mut network = Network::new_logistic_sigmoid_biases(vec!(3, 3, 2));
-    // let rng = rand::thread_rng();
-    let mut rng: Pcg64 = Seeder::from(0).make_rng();
-    network.set_random_weights_rng(&mut rng);
+    network.set_random_weights_seed(0);
 
     // let mut rng = rand::rngs::thread_rng();
     let mut rng = rand::rngs::StdRng::from_entropy();
@@ -46,9 +44,7 @@ fn main() {
     println!("duration {:?}", duration);
 
     println!("error squared: {}", errsqr);
-    for i in network.get_all_weights().iter().enumerate() {
-        println!("network connector {}:\n{}", i.0, i.1);
-    }
+    println!("network:\n{}", network);
 
     // println!("network:\n{}", network);
 }
