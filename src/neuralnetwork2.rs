@@ -24,7 +24,7 @@ impl Layer {
 
     pub fn new(input_dimension: usize, output_dimension: usize) -> Layer {
         Layer {
-            weights: Matrix::new(input_dimension, output_dimension),
+            weights: Matrix::new(output_dimension, input_dimension),
         }
     }
 
