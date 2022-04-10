@@ -18,13 +18,15 @@ use crate::neuralnetwork::{Ampl, Sample};
 pub struct Layer
 {
     weights: Matrix<Ampl>,
+    biases: bool,
 }
 
 impl Layer {
 
-    pub fn new(input_dimension: usize, output_dimension: usize) -> Layer {
+    pub fn new(input_dimension: usize, output_dimension: usize, biases: bool) -> Layer {
         Layer {
             weights: Matrix::new(output_dimension, input_dimension),
+            biases,
         }
     }
 
@@ -94,6 +96,10 @@ impl Network {
         self.layers.iter().map(|layer| layer.get_weights().clone()).collect()
     }
 
+    pub fn get_all_weights(&self) -> Vec<&Matrix<Ampl>> {
+        self.layers.iter().map(|layer| layer.get_weights()).collect()
+    }
+
     pub fn set_all_weights(&mut self, weights: Vec<Matrix<Ampl>>) {
         if self.layers.len() != weights.len() {
             panic!("Number of layers {} does not equals weights length {}", self.layers.len(), weights.len());
@@ -130,14 +136,14 @@ impl Network {
         }
         // evaluate states feed forward through layers
         let mut state= input.clone();
-        // if self.biases {
-        //     *state.last() = 1.0;
-        // }
+        if self.biases {
+            *state.last() = 1.0;
+        }
         for layer in &self.layers {
             state = layer.evaluate_input(&state, self.sigmoid);
-            // if self.biases {
-            //     *state.last() = 1.0;
-            // }
+            if self.biases {
+                *state.last() = 1.0;
+            }
         }
         state
     }
@@ -152,9 +158,14 @@ impl Network {
 
         // first evaluate states using feed forward
         let mut layer_input_states = Vec::new();
-        let mut state= input.clone();
+        let mut state= input.clone();        if self.biases {
+            *state.last() = 1.0;
+        }
         for layer in &mut self.layers {
-            let output = layer.evaluate_input(&state, self.sigmoid);
+            let mut output = layer.evaluate_input(&state, self.sigmoid);
+            if self.biases {
+                *output.last() = 1.0;
+            }
             layer_input_states.push(state);
             state = output;
         }
@@ -191,7 +202,7 @@ impl Network {
         }
         let mut layers = Vec::new();
         for i in 1..dimensions.len() {
-            layers.push(Layer::new(dimensions[i - 1], dimensions[i]));
+            layers.push(Layer::new(dimensions[i - 1], dimensions[i], biases));
         }
         Network {
             layers,
@@ -303,7 +314,7 @@ fn get_errsqr(network: &Network, sample: &Sample) -> Ampl {
 }
 
 pub fn write_network_to_file(network: &Network, filepath: impl AsRef<Path>) {
-    let json = serde_json::to_string(&network.copy_all_weights()).expect("error serializing");
+    let json = serde_json::to_string(&network.get_all_weights()).expect("error serializing");
     let mut file = fs::File::create(&filepath).expect("error creating file");
     file.write_all(json.as_bytes()).expect("error writing");
     file.flush().unwrap();
