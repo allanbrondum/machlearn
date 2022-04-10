@@ -1,9 +1,12 @@
 use crate::neuralnetwork::{Sample, Ampl};
 use crate::vector::Vector;
 use core::iter;
+use std::cmp::Ordering;
 use std::io::{BufReader, Read};
 use std::fs::File;
 use itertools::Itertools;
+use rayon::iter::ParallelIterator;
+use crate::neuralnetwork2::Network;
 
 pub const IMAGE_WIDTH_HEIGHT: usize = 28;
 pub const IMAGE_PIXEL_COUNT: usize = IMAGE_WIDTH_HEIGHT * IMAGE_WIDTH_HEIGHT;
@@ -98,3 +101,24 @@ fn get_data_sets(label_file_path: &str, image_file_path: &str) -> impl Iterator<
         }
     })
 }
+
+pub fn test_correct_percentage(network: &Network, samples: impl ParallelIterator<Item=Sample>, print: bool) -> f64 {
+    let result: (usize, usize) = samples.map(|sample| {
+        let output = network.evaluate_input(&sample.0);
+        let guess = index_of_max(&output);
+        let correct = index_of_max(&sample.1);
+        if print {
+            println!("Output {}, guess {}, correct {}", output, guess, correct);
+        }
+        let is_correct = if guess == correct {1} else {0};
+        (1, is_correct)
+    }).reduce(|| (0, 0), |x, y| (x.0 + y.0, x.1 + y.1));
+    100. * result.1 as f64 / result.0 as f64
+
+}
+
+fn index_of_max(vector: &Vector<Ampl>) -> usize {
+    vector.iter().enumerate().max_by(|x, y| if x.1 > y.1 { Ordering::Greater } else { Ordering::Less }).unwrap().0
+}
+
+

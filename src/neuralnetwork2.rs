@@ -47,8 +47,7 @@ impl Layer {
         self.weights.dimensions().rows
     }
 
-    pub fn set_random_weights(&mut self) {
-        let mut rng = rand::thread_rng();
+    pub fn set_random_weights(&mut self, rng: &mut impl Rng) {
         self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
     }
 
@@ -81,8 +80,13 @@ pub struct Network
 
 impl Network {
     pub fn set_random_weights(&mut self) {
+        let mut rng = rand::thread_rng();
+        self.set_random_weights_rng(&mut rng);
+    }
+
+    pub fn set_random_weights_rng(&mut self, rng: &mut impl Rng) {
         for layer in &mut self.layers {
-            layer.set_random_weights();
+            layer.set_random_weights(rng);
         }
     }
 
