@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use machlearn::matrix::{Matrix, MatrixDimensions, MatrixT};
+use machlearn::matrix::{Matrix, MatrixDimensions, MatrixT, TransposedMatrixView};
 
 #[derive(Clone, PartialEq, Eq)]
 struct TestNumber {
@@ -38,4 +38,6 @@ fn main() {
     dim.transpose();
     let dimref = &dim;
     dimref.transpose();
+
+    let b: TransposedMatrixView<_, _> = a.as_transpose();
 }

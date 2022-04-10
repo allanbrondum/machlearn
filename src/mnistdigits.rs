@@ -65,14 +65,14 @@ fn print_image(image_bytes: impl Iterator<Item=u8>) {
     }
 }
 
-fn print_samples(samples: &mut impl Iterator<Item=Sample>) {
-    for sample in samples {
-        println!("Output: {}", sample.1);
-        println!("Image:"); // print as ascii art
-        // samples are 0..1 grayscale
-        print_image(sample.0.iter().map(|val| (val * 256.) as u8));
-    }
-}
+// fn print_samples(samples: &mut impl Iterator<Item=Sample>) {
+//     for sample in samples {
+//         println!("Output: {}", sample.1);
+//         println!("Image:"); // print as ascii art
+//         // samples are 0..1 grayscale
+//         print_image(sample.0.iter().map(|val| (val * 256.) as u8));
+//     }
+// }
 
 fn get_learning_data() -> impl Iterator<Item=(u8, ImageArray)> {
     get_data_sets("mnistdigitdata/train-labels.idx1-ubyte", "mnistdigitdata/train-images.idx3-ubyte")

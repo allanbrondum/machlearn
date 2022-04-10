@@ -5,10 +5,14 @@ use std::fmt::{Display, Formatter};
 use serde::{Serialize, Deserialize};
 use std::iter::Sum;
 use std::marker::PhantomData;
+pub use crate::matrix::transposedview::TransposedMatrixView;
+pub use crate::matrix::vectorview::VectorView;
 use crate::vector::Vector;
 
 /// Operator implementations for matrix
-pub mod arit;
+mod arit;
+mod transposedview;
+mod vectorview;
 
 pub trait MatrixElement:
 Copy +
@@ -215,42 +219,6 @@ impl<T> Matrix<T>
 }
 
 
-pub struct TransposedMatrixView<'a, T: MatrixElement, M: MatrixT<'a, T>> {
-    inner: &'a mut M,
-    _phantom: PhantomData<T>,
-}
-
-impl<'a, T: MatrixElement, M: MatrixT<'a, T>> TransposedMatrixView<'a, T, M> {
-    fn new(inner: &'a mut M) -> TransposedMatrixView<'a, T, M> {
-        TransposedMatrixView{inner, _phantom: PhantomData}
-    }
-}
-
-impl<'a, T: MatrixElement, M: MatrixT<'a, T>> MatrixT<'a, T> for TransposedMatrixView<'a, T, M> {
-    type ColIter = M::RowIter;
-    type RowIter = M::ColIter;
-
-    fn dimensions(&self) -> MatrixDimensions {
-        self.inner.dimensions().transpose()
-    }
-
-    fn elm(&self, row: usize, col: usize) -> &T {
-        self.inner.elm(col, row)
-    }
-
-    fn elm_mut(&mut self, row: usize, col: usize) -> &mut T {
-        self.inner.elm_mut(col, row)
-    }
-
-    fn row_iter(&'a self, row: usize) -> Self::RowIter {
-        self.inner.col_iter(row)
-    }
-
-    fn col_iter(&'a self, col: usize) -> Self::ColIter {
-        self.inner.row_iter(col)
-    }
-}
-
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[derive(Serialize, Deserialize)]
@@ -279,6 +247,7 @@ impl<T> Matrix<T>
 
     pub fn new_from_elements(rows: usize, columns: usize, elements: Vec<T>,
                              row_stride: usize, col_stride: usize) -> Matrix<T> {
+        assert_eq!((rows - 1) * row_stride + (columns - 1) * col_stride + 1, elements.len());
         Matrix {
             dimensions: MatrixDimensions { rows, columns },
             elements,
@@ -293,18 +262,16 @@ impl<T> Index<(usize, usize)> for Matrix<T>
 {
     type Output = T;
 
-    fn index(&self, row_col_index: (usize, usize)) -> &T {
-        let lin_index = self.lin_index(row_col_index.0, row_col_index.1);
-        &self.elements[lin_index]
+    fn index(&self, (row, column): (usize, usize)) -> &T {
+        self.elm(row, column)
     }
 }
 
 impl<T> IndexMut<(usize, usize)> for Matrix<T>
     where T: MatrixElement
 {
-    fn index_mut(&mut self, row_col_index: (usize, usize)) -> &mut T {
-        let lin_index = self.lin_index(row_col_index.0, row_col_index.1);
-        & mut self.elements[lin_index]
+    fn index_mut(&mut self, (row, column): (usize, usize)) -> &mut T {
+        self.elm_mut(row, column)
     }
 }
 
@@ -428,12 +395,11 @@ mod tests {
 
     #[test]
     fn matrix_with_col_stride() {
-        let mut a = Matrix {
-            dimensions: MatrixDimensions { rows: 3, columns: 2},
-            elements: vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1),
-            row_stride: 1,
-            col_stride: 3
-        };
+        let mut a = Matrix::new_from_elements(
+            3, 2,
+            vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1),
+            1, 3);
+
         a[(0,0)] = 1.1;
         a[(1,0)] = 2.1;
         a[(0,1)] = 3.1;
@@ -480,12 +446,11 @@ mod tests {
 
     #[test]
     fn matrix_with_row_stride() {
-        let mut a = Matrix {
-            dimensions: MatrixDimensions { rows: 3, columns: 2},
-            elements: vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1),
-            row_stride: 2,
-            col_stride: 1
-        };
+        let mut a = Matrix::new_from_elements(
+            3, 2,
+            vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1),
+            2, 1);
+
         a[(0,0)] = 1.1;
         a[(1,0)] = 2.1;
         a[(0,1)] = 3.1;
@@ -529,6 +494,99 @@ mod tests {
         assert_eq!(None, col_iter.next());
 
     }
+
+    #[test]
+    fn matrix_vector_view_with_col_stride() {
+        let mut vec = vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1);
+        let mut a = VectorView::new(
+            3, 2,
+            &mut vec,
+            1, 3);
+
+        *a.elm_mut(0,0) = 1.1;
+        *a.elm_mut(1,0) = 2.1;
+        *a.elm_mut(0,1) = 3.1;
+        *a.elm_mut(2,1) = 4.1;
+
+        assert_eq!(1.1, *a.elm(0,0));
+        assert_eq!(2.1, *a.elm(1,0));
+        assert_eq!(0.0, *a.elm(2,0));
+        assert_eq!(3.1, *a.elm(0,1));
+        assert_eq!(0.0, *a.elm(1,1));
+        assert_eq!(4.1, *a.elm(2,1));
+
+        let mut row_iter = a.row_iter(0);
+        assert_eq!(Some(&1.1), row_iter.next());
+        assert_eq!(Some(&3.1), row_iter.next());
+        assert_eq!(None, row_iter.next());
+        let mut row_iter = a.row_iter(1);
+        assert_eq!(Some(&2.1), row_iter.next());
+        assert_eq!(Some(&0.0), row_iter.next());
+        assert_eq!(None, row_iter.next());
+        let mut row_iter = a.row_iter(2);
+        assert_eq!(Some(&0.0), row_iter.next());
+        assert_eq!(Some(&4.1), row_iter.next());
+        assert_eq!(None, row_iter.next());
+
+        let mut col_iter = a.col_iter(0);
+        assert_eq!(Some(&1.1), col_iter.next());
+        assert_eq!(Some(&2.1), col_iter.next());
+        assert_eq!(Some(&0.0), col_iter.next());
+        assert_eq!(None, col_iter.next());
+        let mut col_iter = a.col_iter(1);
+        assert_eq!(Some(&3.1), col_iter.next());
+        assert_eq!(Some(&0.0), col_iter.next());
+        assert_eq!(Some(&4.1), col_iter.next());
+        assert_eq!(None, col_iter.next());
+
+    }
+
+    #[test]
+    fn matrix_vector_view_with_row_stride() {
+        let mut vec = vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1);
+        let mut a = VectorView::new(
+            3, 2,
+            &mut vec,
+            2, 1);
+
+        *a.elm_mut(0,0) = 1.1;
+        *a.elm_mut(1,0) = 2.1;
+        *a.elm_mut(0,1) = 3.1;
+        *a.elm_mut(2,1) = 4.1;
+
+        assert_eq!(1.1, *a.elm(0,0));
+        assert_eq!(2.1, *a.elm(1,0));
+        assert_eq!(0.0, *a.elm(2,0));
+        assert_eq!(3.1, *a.elm(0,1));
+        assert_eq!(0.0, *a.elm(1,1));
+        assert_eq!(4.1, *a.elm(2,1));
+
+        let mut row_iter = a.row_iter(0);
+        assert_eq!(Some(&1.1), row_iter.next());
+        assert_eq!(Some(&3.1), row_iter.next());
+        assert_eq!(None, row_iter.next());
+        let mut row_iter = a.row_iter(1);
+        assert_eq!(Some(&2.1), row_iter.next());
+        assert_eq!(Some(&0.0), row_iter.next());
+        assert_eq!(None, row_iter.next());
+        let mut row_iter = a.row_iter(2);
+        assert_eq!(Some(&0.0), row_iter.next());
+        assert_eq!(Some(&4.1), row_iter.next());
+        assert_eq!(None, row_iter.next());
+
+        let mut col_iter = a.col_iter(0);
+        assert_eq!(Some(&1.1), col_iter.next());
+        assert_eq!(Some(&2.1), col_iter.next());
+        assert_eq!(Some(&0.0), col_iter.next());
+        assert_eq!(None, col_iter.next());
+        let mut col_iter = a.col_iter(1);
+        assert_eq!(Some(&3.1), col_iter.next());
+        assert_eq!(Some(&0.0), col_iter.next());
+        assert_eq!(Some(&4.1), col_iter.next());
+        assert_eq!(None, col_iter.next());
+
+    }
+
 
     #[test]
     fn neg() {

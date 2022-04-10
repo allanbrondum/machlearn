@@ -10,7 +10,7 @@ use itertools::Itertools;
 use crate::matrix::{Matrix, MatrixElement};
 
 /// Operator implementations for vector
-pub mod arit;
+mod arit;
 
 /// Vector with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
