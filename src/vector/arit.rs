@@ -1,3 +1,4 @@
+
 use std::ops::{Neg, AddAssign, Sub, SubAssign, Add, Mul, MulAssign};
 use crate::vector::{Vector};
 use crate::matrix::{Matrix, MatrixElement};
@@ -87,14 +88,25 @@ impl<T> MulAssign<T> for Vector<T>
     }
 }
 
-impl<T> Mul for &Vector<T>
-    where T: MatrixElement {
-    type Output = T;
+impl Mul<Vector<f64>> for f64
+{
+    type Output = Vector<f64>;
 
-    fn mul(self, rhs: Self) -> T {
-       self.scalar_prod(rhs)
+    fn mul(self, mut rhs: Vector<f64>) -> Vector<f64> {
+        rhs *= self;
+        rhs
     }
 }
+
+// impl<T> Mul<Vector<T>> for T
+//     where T: MatrixElement {
+//     type Output = Vector<T>;
+//
+//     fn mul(self, mut rhs: Vector<T>) -> Vector<T> {
+//         rhs *= self;
+//         rhs
+//     }
+// }
 
 impl<T> Mul<Vector<T>> for Matrix<T>
     where T: MatrixElement

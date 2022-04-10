@@ -6,6 +6,7 @@ use serde::{Serialize, Deserialize};
 use std::iter::Sum;
 use crate::vector::Vector;
 
+/// Operator implementations for matrix
 pub mod arit;
 
 pub trait MatrixElement:
@@ -894,6 +895,23 @@ mod tests {
         a *= 2;
 
         assert_eq!(result, a);
+    }
+
+    #[test]
+    fn multiply_scalar2() {
+        let mut a = Matrix::new( 3, 4);
+        a[(0,0)] = 1.;
+        a[(0,1)] = 2.;
+        a[(1,0)] = 3.;
+        a[(1,1)] = 4.;
+
+        let mut result = Matrix::new( 3, 4);
+        result[(0,0)] = 2.;
+        result[(0,1)] = 4.;
+        result[(1,0)] = 6.;
+        result[(1,1)] = 8.;
+
+        assert_eq!(result, 2. * a);
     }
 
     #[test]

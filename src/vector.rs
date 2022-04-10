@@ -9,6 +9,7 @@ use itertools::Itertools;
 
 use crate::matrix::{Matrix, MatrixElement};
 
+/// Operator implementations for vector
 pub mod arit;
 
 /// Vector with arithmetic operations.
@@ -38,7 +39,7 @@ impl<T> Vector<T>
             .sum()
     }
 
-    /// Component wise multiplicaiton
+    /// Component wise multiplication
     pub fn mul_comp(&self, rhs: &Vector<T>) -> Vector<T> {
         let v1 = self;
         let v2 = rhs;
@@ -294,25 +295,6 @@ mod tests {
     //     assert_eq!(8.5, x * y);
     // }
 
-    #[test]
-    fn mul2() {
-        let mut a = Vector::new( 2);
-        a[0] = 1.1;
-        a[1] = 2.1;
-
-        let mut b = Vector::new( 2);
-        b[0] = 2.;
-        b[1] = 3.;
-
-        let x: &Vector<f64> = &a;
-        let y: &Vector<f64> = &b;
-        assert_eq!(8.5, x * y);
-        assert_eq!(8.5, &a * &b);
-        assert_eq!(8.5, (&a).mul(&b));
-        // assert_eq!(8.5, (&a).mul(&b));
-        assert_eq!(8.5, <&Vector<f64> as Mul>::mul(&a, &b));
-        assert_eq!(8.5, Mul::mul(&a, &b));
-    }
 
     #[test]
     fn vec_prod() {
@@ -350,9 +332,11 @@ mod tests {
         result[0] = 2.2;
         result[1] = 4.2;
 
+        let b = a.clone();
         a *= 2.;
 
         assert_eq!(result, a);
+        assert_eq!(result, 2. * b);
 
     }
 

@@ -11,6 +11,7 @@ use std::fs;
 use std::io::Write;
 use std::io::BufRead;
 use std::io::Read;
+use rand::prelude::ThreadRng;
 
 pub type Ampl = f64;
 
@@ -70,6 +71,10 @@ pub struct Network
 impl Network {
     pub fn set_random_weights(&mut self) {
         let mut rng = rand::thread_rng();
+        self.set_random_weights_rng(rng);
+    }
+
+    pub fn set_random_weights_rng(&mut self, mut rng: impl Rng) {
         for connector in &mut self.connectors {
             connector.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
         }
@@ -150,7 +155,7 @@ impl Network {
 
         if print {
             let diff = output.clone() - self.get_output();
-            let errsqr = &diff * &diff;
+            let errsqr = diff.scalar_prod(&diff);
             println!("errsqr: {:.4}", errsqr);
         }
 
@@ -373,7 +378,7 @@ fn get_errsqr(network: &Network, sample: &Sample) -> Ampl {
     // println!("{:?}", std::thread::current());
     let output = network.evaluate_input_no_state_change(&sample.0);
     let diff = output - &sample.1;
-    let errsqr = &diff * &diff;
+    let errsqr = diff.scalar_prod(&diff);
     // if (errsqr > 0.1) {
     //     println!("errsqr {} input {} output sample {} output network {}", errsqr, sample.0, sample.1, output);
     // }

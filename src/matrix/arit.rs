@@ -87,3 +87,12 @@ impl<T> Mul for &Matrix<T>
     }
 }
 
+impl Mul<Matrix<f64>> for f64
+{
+    type Output = Matrix<f64>;
+
+    fn mul(self, mut rhs: Matrix<f64>) -> Matrix<f64> {
+        rhs *= self;
+        rhs
+    }
+}

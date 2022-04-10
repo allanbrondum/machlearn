@@ -17,6 +17,8 @@ use machlearn::vector::Vector;
 use machlearn::matrix::Matrix;
 use std::path::{PathBuf, Path};
 use std::str::FromStr;
+use rand_pcg::Pcg64;
+use rand_seeder::Seeder;
 use machlearn::mnistdigits;
 
 fn main() {
@@ -26,7 +28,9 @@ fn main() {
 
     let read_from_file = false;
     if !read_from_file {
-        network.set_random_weights();
+        // let rng = rand::thread_rng();
+        let rng: Pcg64 = Seeder::from(0).make_rng();
+        network.set_random_weights_rng(rng);
 
         const LEARNING_SAMPLES: usize = 1_000;
         // const LEARNING_SAMPLES: usize = 10_000;
