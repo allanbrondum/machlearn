@@ -52,16 +52,17 @@ fn main() {
     println!("error squared: {:.5}", errsqr);
     println!("% correct: {:.2}", pct_correct);
 
-    let weights = network.get_all_weights()[0][0];
-    for row in 0..weights.row_count() {
-        let mut row_elms: Vec<_> = weights.row_iter(row).copied().collect();
-        let kernel = SliceView::new(mnistdigits::IMAGE_WIDTH_HEIGHT, mnistdigits::IMAGE_WIDTH_HEIGHT,
-                       &mut row_elms,
-                       mnistdigits::IMAGE_WIDTH_HEIGHT, 1);
-        println!("kernel {}:\n", row);
-        mnistdigits::print_matrix(&kernel);
+    if false { // print kernels
+        let weights = network.get_all_weights()[0][0];
+        for row in 0..weights.row_count() {
+            let mut row_elms: Vec<_> = weights.row_iter(row).copied().collect();
+            let kernel = SliceView::new(mnistdigits::IMAGE_WIDTH_HEIGHT, mnistdigits::IMAGE_WIDTH_HEIGHT,
+                                        &mut row_elms,
+                                        mnistdigits::IMAGE_WIDTH_HEIGHT, 1);
+            println!("kernel {}:\n", row);
+            mnistdigits::print_matrix(&kernel);
+        }
     }
-    // println!("network: {}", network);
 
     neuralnetwork2::write_network_to_file(&network,"mnist_tmp_weights.json");
 }
