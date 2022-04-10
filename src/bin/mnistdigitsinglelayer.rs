@@ -14,7 +14,7 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use machlearn::neuralnetwork::{Ampl, Sample};
 use machlearn::neuralnetwork2;
 use machlearn::vector::Vector;
-use machlearn::matrix::Matrix;
+use machlearn::matrix::{Matrix, MatrixT, SliceView};
 use std::path::{PathBuf, Path};
 use std::str::FromStr;
 use rand_pcg::Pcg64;
@@ -30,8 +30,7 @@ fn main() {
     if !read_from_file {
         network.set_random_weights_seed(0);
 
-        const LEARNING_SAMPLES: usize = 1_000;
-        // const LEARNING_SAMPLES: usize = 10_000;
+        const LEARNING_SAMPLES: usize = 60_000;
         neuralnetwork2::run_learning_iterations(&mut network, mnistdigits::get_learning_samples().take(LEARNING_SAMPLES), 0.3);
     } else {
         neuralnetwork2::read_network_from_file(&mut network, "mnist_twolayer_weights.json");
@@ -53,6 +52,15 @@ fn main() {
     println!("error squared: {:.5}", errsqr);
     println!("% correct: {:.2}", pct_correct);
 
+    let weights = network.get_all_weights()[0][0];
+    for row in 0..weights.row_count() {
+        let mut row_elms: Vec<_> = weights.row_iter(row).copied().collect();
+        let kernel = SliceView::new(mnistdigits::IMAGE_WIDTH_HEIGHT, mnistdigits::IMAGE_WIDTH_HEIGHT,
+                       &mut row_elms,
+                       mnistdigits::IMAGE_WIDTH_HEIGHT, 1);
+        println!("kernel {}:\n", row);
+        mnistdigits::print_matrix(&kernel);
+    }
     // println!("network: {}", network);
 
     neuralnetwork2::write_network_to_file(&network,"mnist_tmp_weights.json");

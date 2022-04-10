@@ -13,10 +13,12 @@ pub const IMAGE_WIDTH_HEIGHT: usize = 28;
 pub const IMAGE_PIXEL_COUNT: usize = IMAGE_WIDTH_HEIGHT * IMAGE_WIDTH_HEIGHT;
 pub type ImageArray = [u8; IMAGE_PIXEL_COUNT];
 
+/// 60_000 learning samples
 pub fn get_learning_samples() -> impl Iterator<Item=Sample> {
     transform_to_samples(get_learning_data())
 }
 
+/// 10_000 learning samples
 pub fn get_test_samples() -> impl Iterator<Item=Sample> {
     transform_to_samples(get_test_data())
 }
@@ -64,7 +66,7 @@ fn print_image(image_array: ImageArray) {
     print_matrix(&view);
 }
 
-fn print_matrix<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) {
+pub fn print_matrix<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) {
     let min = matrix.iter().copied().min_by(cmp_ampl_ref).unwrap();
     let max = matrix.iter().copied().max_by(cmp_ampl_ref).unwrap();
     for row in 0..matrix.row_count() {
