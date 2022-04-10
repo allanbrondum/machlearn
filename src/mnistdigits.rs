@@ -6,6 +6,7 @@ use std::io::{BufReader, Read};
 use std::fs::File;
 use itertools::Itertools;
 use rayon::iter::ParallelIterator;
+use crate::matrix::{MatrixT, SliceView};
 use crate::neuralnetwork2::Network;
 
 pub const IMAGE_WIDTH_HEIGHT: usize = 28;
@@ -49,7 +50,23 @@ fn print_data_series(label_bytes: &mut impl Iterator<Item=(u8, ImageArray)>) {
         println!("Image:"); // print as ascii art
         // images are u8 grayscale
         print_image(data_set.1.iter().copied());
+        print_image2(data_set.1);
     }
+}
+
+fn print_image2(image_array: ImageArray) {
+    let mut vec: Vec<_> = image_array.into_iter().map(|item| item as f64).collect();
+    let view = SliceView::new(
+        IMAGE_WIDTH_HEIGHT,
+        IMAGE_WIDTH_HEIGHT,
+        &mut vec,
+        IMAGE_WIDTH_HEIGHT,
+        1);
+    print_matrix(&view);
+}
+
+fn print_matrix<'a, M: MatrixT<'a, f64>>(matrix: &M) {
+    // let min = matrix.ap
 }
 
 fn print_image(image_bytes: impl Iterator<Item=u8>) {

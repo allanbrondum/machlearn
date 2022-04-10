@@ -40,4 +40,5 @@ fn main() {
     dimref.transpose();
 
     let b: TransposedMatrixView<_, _> = a.as_transpose();
+
 }

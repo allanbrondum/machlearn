@@ -6,13 +6,13 @@ use serde::{Serialize, Deserialize};
 use std::iter::Sum;
 use std::marker::PhantomData;
 pub use crate::matrix::transposedview::TransposedMatrixView;
-pub use crate::matrix::vectorview::VectorView;
+pub use crate::matrix::sliceview::SliceView;
 use crate::vector::Vector;
 
 /// Operator implementations for matrix
 mod arit;
 mod transposedview;
-mod vectorview;
+mod sliceview;
 
 pub trait MatrixElement:
 Copy +
@@ -75,6 +75,10 @@ pub trait MatrixT<'a, T: MatrixElement> {
     fn row_iter(&'a self, row: usize) -> Self::RowIter;
 
     fn col_iter(&'a self, col: usize) -> Self::ColIter;
+
+    fn iter(&'a self) -> AllElementsIter<'a, T, Self> where Self: Sized {
+        AllElementsIter::new(self)
+    }
 
     /// Matrix multiplication with another matrix
     fn mul_mat(&'a self, rhs: &'a impl MatrixT<'a, T>) -> Matrix<T> {
@@ -145,6 +149,38 @@ pub trait MatrixT<'a, T: MatrixElement> {
         where Self: Sized
     {
         TransposedMatrixView::new(self)
+    }
+}
+
+pub struct AllElementsIter<'a, T: MatrixElement, M: MatrixT<'a, T>> {
+    inner: &'a M,
+    current_row_iter: M::RowIter,
+    current_row: usize,
+}
+
+impl<'a, T: MatrixElement, M: MatrixT<'a, T>> AllElementsIter<'a, T, M> {
+    fn new(inner: &'a M) -> AllElementsIter<'a, T, M> {
+        AllElementsIter {
+            inner,
+            current_row_iter: inner.row_iter(0),
+            current_row: 0,
+        }
+    }
+}
+
+impl<'a, T: MatrixElement, M: MatrixT<'a, T>> Iterator for AllElementsIter<'a, T, M> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(elm) = self.current_row_iter.next() {
+            Some(elm)
+        } else if (self.current_row + 1 < self.inner.row_count()) {
+            self.current_row += 1;
+            self.current_row_iter = self.inner.row_iter(self.current_row);
+            self.current_row_iter.next()
+        } else {
+            None
+        }
     }
 }
 
@@ -498,7 +534,7 @@ mod tests {
     #[test]
     fn matrix_vector_view_with_col_stride() {
         let mut vec = vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1);
-        let mut a = VectorView::new(
+        let mut a = SliceView::new(
             3, 2,
             &mut vec,
             1, 3);
@@ -544,7 +580,7 @@ mod tests {
     #[test]
     fn matrix_vector_view_with_row_stride() {
         let mut vec = vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1);
-        let mut a = VectorView::new(
+        let mut a = SliceView::new(
             3, 2,
             &mut vec,
             2, 1);
@@ -717,6 +753,26 @@ mod tests {
         assert_eq!(Some(&4.1), row_iter.next());
         assert_eq!(None, row_iter.next());
         assert_eq!(None, row_iter.next());
+    }
+
+    #[test]
+    fn all_elements_iter() {
+        let mut a = Matrix::new(3, 2);
+        a[(0, 0)] = 1.1;
+        a[(0, 1)] = 2.1;
+        a[(1, 0)] = 3.1;
+        a[(1, 1)] = 4.1;
+
+        let mut iter = a.iter();
+
+        assert_eq!(Some(&1.1), iter.next());
+        assert_eq!(Some(&2.1), iter.next());
+        assert_eq!(Some(&3.1), iter.next());
+        assert_eq!(Some(&4.1), iter.next());
+        assert_eq!(Some(&0.), iter.next());
+        assert_eq!(Some(&0.), iter.next());
+        assert_eq!(None, iter.next());
+        assert_eq!(None, iter.next());
     }
 
     #[test]
