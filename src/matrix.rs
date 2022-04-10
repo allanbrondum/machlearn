@@ -4,6 +4,7 @@ use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul};
 use std::fmt::{Display, Formatter};
 use serde::{Serialize, Deserialize};
 use std::iter::Sum;
+use std::marker::PhantomData;
 use crate::vector::Vector;
 
 /// Operator implementations for matrix
@@ -49,46 +50,30 @@ pub struct Matrix<T>
     col_stride: usize
 }
 
-impl<T> Matrix<T>
-    where T: MatrixElement
-{
-    pub fn dimensions(&self) -> MatrixDimensions {
-        self.dimensions
+pub trait MatrixT<'a, T: MatrixElement> {
+    type ColIter : Iterator<Item = &'a T> + 'a;
+    type RowIter : Iterator<Item = &'a T> + 'a;
+
+    fn dimensions(&self) -> MatrixDimensions;
+
+    fn elm(&self, row: usize, col:usize) -> &T;
+
+    fn elm_mut(&mut self, row: usize, col:usize) -> &mut T;
+
+    fn column_count(&self) -> usize {
+        self.dimensions().columns
     }
 
-    fn lin_index(&self, row: usize, col:usize) -> usize {
-        row * self.row_stride + col * self.col_stride
+    fn row_count(&self) -> usize {
+        self.dimensions().rows
     }
 
-    pub fn elm(&self, row: usize, col:usize) -> &T {
-        &self.elements[self.lin_index(row, col)]
-    }
+    fn row_iter(&'a self, row: usize) -> Self::RowIter;
 
-    pub fn elm_mut(&mut self, row: usize, col:usize) -> &mut T {
-        let index = self.lin_index(row, col);
-        &mut self.elements[index]
-    }
-
-    pub fn column_count(&self) -> usize {
-        self.dimensions.columns
-    }
-
-    pub fn row_count(&self) -> usize {
-        self.dimensions.rows
-    }
-
-    pub fn row_iter(&self, row: usize) -> impl Iterator<Item = &T> {
-        let offset = self.lin_index(row, 0);
-        StrideIter::new(self.elements.as_slice(), offset, self.col_stride, self.dimensions.columns)
-    }
-
-    pub fn col_iter(&self, col: usize) -> impl Iterator<Item = &T> {
-        let offset = self.lin_index(0, col);
-        StrideIter::new(self.elements.as_slice(), offset, self.row_stride, self.dimensions.rows)
-    }
+    fn col_iter(&'a self, col: usize) -> Self::ColIter;
 
     /// Matrix multiplication with another matrix
-    pub fn mul_mat(&self, rhs: &Matrix<T>) -> Matrix<T> {
+    fn mul_mat(&'a self, rhs: &'a impl MatrixT<'a, T>) -> Matrix<T> {
         let m1 = self;
         let m2 = rhs;
         if m1.dimensions().columns != m2.dimensions().rows {
@@ -108,14 +93,14 @@ impl<T> Matrix<T>
     }
 
     /// Sum of component-wise multiplication (like vector dot product)
-    pub fn scalar_prod(&self, rhs: &Matrix<T>) -> T {
+    fn scalar_prod(&'a self, rhs: &'a impl MatrixT<'a, T>) -> T {
         if self.dimensions() != rhs.dimensions() {
             panic!("Cannot make scalar product of matrices {} and {} because of dimensions", self.dimensions(), rhs.dimensions());
         }
         let mut result = T::default();
         for row in 0..self.row_count() {
             for col in 0..self.column_count() {
-                result += self[(row, col)] * rhs[(row, col)];
+                result += *self.elm(row, col) * *rhs.elm(row, col);
             }
         }
         result
@@ -123,7 +108,7 @@ impl<T> Matrix<T>
 
     /// Multiply matrix with vector (from right hand side). Same as matrix multiplication considering
     /// the given vector as a matrix with a single column.
-    pub fn mul_vector(&self, rhs: &Vector<T>) -> Vector<T> {
+    fn mul_vector(&'a self, rhs: &Vector<T>) -> Vector<T> {
         if self.column_count() != rhs.len() {
             panic!("Cannot multiply matrix {} with vector {} because of dimensions", self.dimensions(), rhs.len());
         }
@@ -138,7 +123,7 @@ impl<T> Matrix<T>
 
     /// Multiply matrix with vector from left hand side. Same as matrix multiplication considering
     /// the given vector as a matrix with a single row.
-    pub fn mul_vector_lhs(&self, lhs: &Vector<T>) -> Vector<T> {
+    fn mul_vector_lhs(&'a self, lhs: &Vector<T>) -> Vector<T> {
         if lhs.len() != self.row_count() {
             panic!("Cannot multiply vector {} with matrix {} because of dimensions", lhs.len(), self.dimensions());
         }
@@ -149,6 +134,52 @@ impl<T> Matrix<T>
                 .sum();
         }
         result
+    }
+
+    /// Transposed view of matrix
+    fn as_transpose(&'a mut self) -> TransposedMatrixView<T, Self>
+        where Self: Sized
+    {
+        TransposedMatrixView::new(self)
+    }
+}
+
+impl<'a, T> MatrixT<'a, T> for Matrix<T>
+    where T: MatrixElement
+{
+    type ColIter = StrideIter<'a, T>;
+    type RowIter = StrideIter<'a, T>;
+
+    fn dimensions(&self) -> MatrixDimensions {
+        self.dimensions
+    }
+
+    fn elm(&self, row: usize, col:usize) -> &T {
+        &self.elements[self.lin_index(row, col)]
+    }
+
+    fn elm_mut(&mut self, row: usize, col:usize) -> &mut T {
+        let index = self.lin_index(row, col);
+        &mut self.elements[index]
+    }
+
+    fn row_iter(&'a self, row: usize) -> Self::RowIter {
+        let offset = self.lin_index(row, 0);
+        StrideIter::new(self.elements.as_slice(), offset, self.col_stride, self.dimensions.columns)
+    }
+
+    fn col_iter(&'a self, col: usize) -> Self::ColIter {
+        let offset = self.lin_index(0, col);
+        StrideIter::new(self.elements.as_slice(), offset, self.row_stride, self.dimensions.rows)
+    }
+
+}
+
+impl<T> Matrix<T>
+    where T: MatrixElement
+{
+    fn lin_index(&self, row: usize, col:usize) -> usize {
+        row * self.row_stride + col * self.col_stride
     }
 
     pub fn transpose(self) -> Matrix<T>
@@ -163,12 +194,6 @@ impl<T> Matrix<T>
             row_stride: self.col_stride,
             col_stride: self.row_stride
         }
-    }
-
-    pub fn as_transpose(self) -> Matrix<T>
-        where Self: Sized
-    {
-        todo!("implement")
     }
 
     //
@@ -190,12 +215,54 @@ impl<T> Matrix<T>
 }
 
 
+pub struct TransposedMatrixView<'a, T: MatrixElement, M: MatrixT<'a, T>> {
+    inner: &'a mut M,
+    _phantom: PhantomData<T>,
+}
+
+impl<'a, T: MatrixElement, M: MatrixT<'a, T>> TransposedMatrixView<'a, T, M> {
+    fn new(inner: &'a mut M) -> TransposedMatrixView<'a, T, M> {
+        TransposedMatrixView{inner, _phantom: PhantomData}
+    }
+}
+
+impl<'a, T: MatrixElement, M: MatrixT<'a, T>> MatrixT<'a, T> for TransposedMatrixView<'a, T, M> {
+    type ColIter = M::RowIter;
+    type RowIter = M::ColIter;
+
+    fn dimensions(&self) -> MatrixDimensions {
+        self.inner.dimensions().transpose()
+    }
+
+    fn elm(&self, row: usize, col: usize) -> &T {
+        self.inner.elm(col, row)
+    }
+
+    fn elm_mut(&mut self, row: usize, col: usize) -> &mut T {
+        self.inner.elm_mut(col, row)
+    }
+
+    fn row_iter(&'a self, row: usize) -> Self::RowIter {
+        self.inner.col_iter(row)
+    }
+
+    fn col_iter(&'a self, col: usize) -> Self::ColIter {
+        self.inner.row_iter(col)
+    }
+}
+
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[derive(Serialize, Deserialize)]
 pub struct MatrixDimensions {
     pub rows: usize,
     pub columns: usize
+}
+
+impl MatrixDimensions {
+    pub fn transpose(self) -> MatrixDimensions {
+        MatrixDimensions {rows: self.columns, columns: self.rows}
+    }
 }
 
 impl<T> Matrix<T>
@@ -876,6 +943,39 @@ mod tests {
         assert_eq!(3, t2[(1,0)]);
         assert_eq!(4, t2[(1,1)]);
 
+    }
+
+    #[test]
+    fn as_transpose() {
+        let mut a = Matrix::new( 3, 4);
+        a[(0,0)] = 1;
+        a[(0,1)] = 2;
+        a[(1,0)] = 3;
+        a[(1,1)] = 4;
+
+        let mut t = a.as_transpose();
+
+        assert_eq!(MatrixDimensions{rows: 4, columns: 3}, t.dimensions());
+        assert_eq!(1, *t.elm(0, 0));
+        assert_eq!(2, *t.elm(1, 0));
+        assert_eq!(3, *t.elm(0, 1));
+        assert_eq!(4, *t.elm(1, 1));
+        let col0: Vec<_> = t.col_iter(0).copied().collect();
+        assert_eq!(vec!(1, 2, 0, 0), col0);
+        let row0: Vec<_> = t.row_iter(0).copied().collect();
+        assert_eq!(vec!(1, 3, 0), row0);
+
+        let t2 = t.as_transpose();
+
+        assert_eq!(MatrixDimensions{rows: 3, columns: 4}, t2.dimensions());
+        assert_eq!(1, *t2.elm(0, 0));
+        assert_eq!(2, *t2.elm(0, 1));
+        assert_eq!(3, *t2.elm(1, 0));
+        assert_eq!(4, *t2.elm(1, 1));
+        let col0: Vec<_> = t2.col_iter(0).copied().collect();
+        assert_eq!(vec!(1, 3, 0), col0);
+        let row0: Vec<_> = t2.row_iter(0).copied().collect();
+        assert_eq!(vec!(1, 2, 0, 0), row0);
     }
 
     #[test]

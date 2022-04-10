@@ -156,7 +156,7 @@ impl<T> Display for Vector<T>
 mod tests {
     use crate::vector::*;
     use std::ops::Mul;
-    use crate::matrix::MatrixDimensions;
+    use crate::matrix::{MatrixDimensions, MatrixT};
 
 
     #[test]

@@ -2,7 +2,7 @@
 
 use std::fmt::{Debug, Display, Formatter};
 use crate::vector::{Vector};
-use crate::matrix::{Matrix};
+use crate::matrix::{Matrix, MatrixT};
 use rand::Rng;
 use rayon::prelude::*;
 use std::time::Instant;

@@ -1,4 +1,5 @@
-use machlearn::matrix::Matrix;
+use itertools::Itertools;
+use machlearn::matrix::{Matrix, MatrixDimensions, MatrixT};
 
 #[derive(Clone, PartialEq, Eq)]
 struct TestNumber {
@@ -28,7 +29,13 @@ fn main() {
     a[(0,1)] = 3.;
     println!("{}", a);
 
-    println!("{}", -a);
+    // println!("{}", -a);
 
     // (0..2).into_iter().collect();
+    println!("{}", a.col_iter(0).format(""));
+
+    let dim = MatrixDimensions {rows:1, columns: 2};
+    dim.transpose();
+    let dimref = &dim;
+    dimref.transpose();
 }
