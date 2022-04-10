@@ -49,13 +49,12 @@ fn print_data_series(label_bytes: &mut impl Iterator<Item=(u8, ImageArray)>) {
         println!("Label: {0:} {0:08b}", data_set.0);
         println!("Image:"); // print as ascii art
         // images are u8 grayscale
-        print_image(data_set.1.iter().copied());
-        print_image2(data_set.1);
+        print_image(data_set.1);
     }
 }
 
-fn print_image2(image_array: ImageArray) {
-    let mut vec: Vec<_> = image_array.into_iter().map(|item| item as f64).collect();
+fn print_image(image_array: ImageArray) {
+    let mut vec: Vec<_> = image_array.into_iter().map(|item| item as Ampl).collect();
     let view = SliceView::new(
         IMAGE_WIDTH_HEIGHT,
         IMAGE_WIDTH_HEIGHT,
@@ -65,22 +64,22 @@ fn print_image2(image_array: ImageArray) {
     print_matrix(&view);
 }
 
-fn print_matrix<'a, M: MatrixT<'a, f64>>(matrix: &M) {
-    // let min = matrix.ap
-}
-
-fn print_image(image_bytes: impl Iterator<Item=u8>) {
-    for line in &image_bytes.chunks(IMAGE_WIDTH_HEIGHT) {
-        println!("{}", line
-            .map(|val| match val {
+fn print_matrix<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) {
+    let min = matrix.iter().copied().min_by(cmp_ampl_ref).unwrap();
+    let max = matrix.iter().copied().max_by(cmp_ampl_ref).unwrap();
+    for row in 0..matrix.row_count() {
+        println!("{}", matrix.row_iter(row)
+            .map(|val| match (256. * (val - min) / (max - min)) as u8 {
                 0..=50 => ' ',
                 51..=150 => '.',
                 151..=200 => '+',
                 201..=255 => '*',
                 _ => panic!("Unhandled value {}", val) })
             .format(""));
+
     }
 }
+
 
 // fn print_samples(samples: &mut impl Iterator<Item=Sample>) {
 //     for sample in samples {
@@ -135,7 +134,13 @@ pub fn test_correct_percentage(network: &Network, samples: impl ParallelIterator
 }
 
 fn index_of_max(vector: &Vector<Ampl>) -> usize {
-    vector.iter().enumerate().max_by(|x, y| if x.1 > y.1 { Ordering::Greater } else { Ordering::Less }).unwrap().0
+    vector.iter().enumerate().max_by(|x, y| cmp_ampl(*x.1, *y.1)).unwrap().0
 }
 
+fn cmp_ampl(x: Ampl, y: Ampl) -> Ordering {
+    if x > y { Ordering::Greater } else { Ordering::Less }
+}
 
+fn cmp_ampl_ref(x: &Ampl, y: &Ampl) -> Ordering {
+    cmp_ampl(*x, *y)
+}

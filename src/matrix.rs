@@ -80,6 +80,10 @@ pub trait MatrixT<'a, T: MatrixElement> {
         AllElementsIter::new(self)
     }
 
+    // fn iter_mut(&'a mut self) -> AllElementsIter<'a, T, Self> where Self: Sized {
+    //     AllElementsMutIter::new(self)
+    // }
+
     /// Matrix multiplication with another matrix
     fn mul_mat(&'a self, rhs: &'a impl MatrixT<'a, T>) -> Matrix<T> {
         let m1 = self;
@@ -763,16 +767,9 @@ mod tests {
         a[(1, 0)] = 3.1;
         a[(1, 1)] = 4.1;
 
-        let mut iter = a.iter();
+        let vecres: Vec<_> = a.iter().collect();
 
-        assert_eq!(Some(&1.1), iter.next());
-        assert_eq!(Some(&2.1), iter.next());
-        assert_eq!(Some(&3.1), iter.next());
-        assert_eq!(Some(&4.1), iter.next());
-        assert_eq!(Some(&0.), iter.next());
-        assert_eq!(Some(&0.), iter.next());
-        assert_eq!(None, iter.next());
-        assert_eq!(None, iter.next());
+        assert_eq!(vec!(&1.1, &2.1, &3.1, &4.1, &0.0, &0.0), vecres);
     }
 
     #[test]
