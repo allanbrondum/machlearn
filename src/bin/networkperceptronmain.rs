@@ -1,11 +1,12 @@
 
 
 
-use machlearn::neuralnetwork::{Network,  Sample};
+use machlearn::neuralnetwork::{Sample};
 use machlearn::vector::Vector;
 use rand::{Rng};
 use std::iter;
-use machlearn::neuralnetwork;
+use machlearn::{neuralnetwork, neuralnetwork2};
+use machlearn::neuralnetwork2::Network;
 
 fn main() {
     let mut network = Network::new_logistic_sigmoid(vec!(8, 1));
@@ -43,11 +44,12 @@ fn main() {
     let learning_samples = samples.clone().take(100000);
     let test_samples = samples.clone().take(1000);
 
-    neuralnetwork::run_learning_iterations(&mut network, learning_samples, 0.5);
-    let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
+    neuralnetwork2::run_learning_iterations(&mut network, learning_samples, 0.5);
+    let errsqr = neuralnetwork2::run_test_iterations(&network, test_samples);
 
     println!("error squared: {}", errsqr);
-    println!("network connector: {}", network.get_weights(0));
+
+    println!("network connector: {}", network.copy_all_weights()[0]);
 
     // network.set_weights(0, network.get_weights(0).clone().apply(|x| 100. * x));
     // let test_samples = samples.clone().take(1000);
