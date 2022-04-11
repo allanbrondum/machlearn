@@ -15,11 +15,11 @@ use machlearn::neuralnetwork::{Ampl, Network, Sample};
 use machlearn::neuralnetwork;
 use machlearn::vector::Vector;
 use machlearn::matrix::Matrix;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
-use machlearn::mnistdigits;
+use machlearn::datasets::mnistdigits;
 
 fn main() {
     let mut network = Network::new_logistic_sigmoid(vec!(mnistdigits::IMAGE_PIXEL_COUNT, 10)); // single layer

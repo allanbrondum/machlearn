@@ -14,12 +14,12 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use machlearn::neuralnetwork::{Ampl, Sample};
 use machlearn::neuralnetwork2;
 use machlearn::vector::Vector;
-use machlearn::matrix::{Matrix, MatrixT, SliceView};
-use std::path::{PathBuf, Path};
+use machlearn::matrix::{Matrix, MatrixT, MutSliceView};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
-use machlearn::mnistdigits;
+use machlearn::datasets::mnistdigits;
 use machlearn::neuralnetwork2::Network;
 
 fn main() {
@@ -56,9 +56,9 @@ fn main() {
         let weights = network.get_all_weights()[0][0];
         for row in 0..weights.row_count() {
             let mut row_elms: Vec<_> = weights.row_iter(row).copied().collect();
-            let kernel = SliceView::new_row_stride(mnistdigits::IMAGE_WIDTH_HEIGHT, mnistdigits::IMAGE_WIDTH_HEIGHT,
-                                        &mut row_elms,
-                                        mnistdigits::IMAGE_WIDTH_HEIGHT);
+            let kernel = MutSliceView::new_row_stride(mnistdigits::IMAGE_WIDTH_HEIGHT, mnistdigits::IMAGE_WIDTH_HEIGHT,
+                                                      &mut row_elms,
+                                                      mnistdigits::IMAGE_WIDTH_HEIGHT);
             println!("kernel {}:\n", row);
             mnistdigits::print_matrix(&kernel);
         }
