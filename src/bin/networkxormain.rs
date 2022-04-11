@@ -8,8 +8,8 @@ use rayon::iter::ParallelBridge;
 
 
 use machlearn::neuralnetwork::{Sample};
-use machlearn::neuralnetwork2;
-use machlearn::neuralnetwork2::Network;
+use machlearn::neuralnetwork;
+use machlearn::neuralnetwork::Network;
 use machlearn::vector::Vector;
 
 fn main() {
@@ -36,9 +36,9 @@ fn main() {
 
     let start = Instant::now();
 
-    neuralnetwork2::run_learning_iterations(&mut network, learning_samples, 0.5);
+    neuralnetwork::run_learning_iterations(&mut network, learning_samples, 0.5);
     // let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
-    let errsqr = neuralnetwork2::run_test_iterations_parallel(&network, test_samples.par_bridge());
+    let errsqr = neuralnetwork::run_test_iterations_parallel(&network, test_samples.par_bridge());
 
     let duration = start.elapsed();
     println!("duration {:?}", duration);

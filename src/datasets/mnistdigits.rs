@@ -7,7 +7,7 @@ use std::fs::File;
 use itertools::Itertools;
 use rayon::iter::ParallelIterator;
 use crate::matrix::{MatrixT, MutSliceView};
-use crate::neuralnetwork2::Network;
+use crate::neuralnetwork::Network;
 
 pub const IMAGE_WIDTH_HEIGHT: usize = 28;
 pub const IMAGE_PIXEL_COUNT: usize = IMAGE_WIDTH_HEIGHT * IMAGE_WIDTH_HEIGHT;
