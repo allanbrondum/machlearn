@@ -1,4 +1,5 @@
 use std::{fs, io, iter};
+use std::any::Any;
 use std::cmp::Ordering;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Bytes, Read, Write};
@@ -11,7 +12,7 @@ use itertools::{Chunk, Itertools};
 use rand::Rng;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use machlearn::neuralnetwork::{Ampl, Sample};
+use machlearn::neuralnetwork::{Ampl, FullyConnectedLayer, Layer, Sample};
 use machlearn::neuralnetwork;
 use machlearn::vector::Vector;
 use machlearn::matrix::{Matrix, MatrixT, MutSliceView};

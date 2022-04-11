@@ -1,5 +1,6 @@
 //! Simple multilayer fully connected neural network using backpropagation of errors (gradient descent) for learning.
 
+use std::any::Any;
 use std::fmt::{Debug, Display, Formatter};
 use crate::vector::{Vector};
 use crate::matrix::{Matrix, MatrixT};
@@ -44,6 +45,8 @@ pub trait Layer : Display + Debug + Sync {
     fn evaluate_input(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl>;
 
     fn backpropagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl>;
+
+    fn as_any(&self) -> &dyn Any;
 }
 
 impl FullyConnectedLayer {
@@ -103,6 +106,10 @@ impl Layer for FullyConnectedLayer {
         self.weights -= ny * delta_output.to_matrix().mul_mat(&input.clone().to_matrix().transpose());
 
         gamma_input
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
