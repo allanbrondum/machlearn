@@ -3,7 +3,7 @@
 use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul};
 use std::fmt::{Display, Formatter};
 use serde::{Serialize, Deserialize};
-use std::iter::Sum;
+use std::iter::{Map, Sum};
 use std::marker::PhantomData;
 pub use crate::matrix::transposedview::TransposedMatrixView;
 pub use crate::matrix::sliceview::MutSliceView;
@@ -67,6 +67,10 @@ pub trait MatrixT<'a, T: MatrixElement> {
 
     fn iter(&'a self) -> AllElementsIter<'a, T, Self> where Self: Sized {
         AllElementsIter::new(self)
+    }
+
+    fn iter_enum(&'a self) -> AllElementsEnummeratedIter<'a, T, Self> where Self: Sized {
+        AllElementsEnummeratedIter::new(self)
     }
 
     // fn iter_mut(&'a mut self) -> AllElementsIter<'a, T, Self> where Self: Sized {
@@ -170,7 +174,44 @@ impl<'a, T: MatrixElement, M: MatrixT<'a, T>> Iterator for AllElementsIter<'a, T
         } else if self.current_row + 1 < self.inner.row_count() {
             self.current_row += 1;
             self.current_row_iter = self.inner.row_iter(self.current_row);
-            self.current_row_iter.next()
+            self.next()
+        } else {
+            None
+        }
+    }
+}
+
+pub struct AllElementsEnummeratedIter<'a, T: MatrixElement, M: MatrixT<'a, T>> {
+    inner: &'a M,
+    current_row_iter: M::RowIter,
+    current_row: usize,
+    current_col: usize,
+}
+
+impl<'a, T: MatrixElement, M: MatrixT<'a, T>> AllElementsEnummeratedIter<'a, T, M> {
+    fn new(inner: &'a M) -> AllElementsEnummeratedIter<'a, T, M> {
+        AllElementsEnummeratedIter {
+            inner,
+            current_row_iter: inner.row_iter(0),
+            current_row: 0,
+            current_col: 0,
+        }
+    }
+}
+
+impl<'a, T: MatrixElement, M: MatrixT<'a, T>> Iterator for AllElementsEnummeratedIter<'a, T, M> {
+    type Item = (MatrixIndex, &'a T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(elm) = self.current_row_iter.next() {
+            let enum_elm = (MatrixIndex(self.current_row, self.current_col), elm);
+            self.current_col += 1;
+            Some(enum_elm)
+        } else if self.current_row + 1 < self.inner.row_count() {
+            self.current_row += 1;
+            self.current_col = 0;
+            self.current_row_iter = self.inner.row_iter(self.current_row);
+            self.next()
         } else {
             None
         }
@@ -257,6 +298,10 @@ pub struct MatrixDimensions {
     pub columns: usize
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Serialize, Deserialize)]
+pub struct MatrixIndex(pub usize, pub usize);
+
 impl MatrixDimensions {
     pub fn transpose(self) -> MatrixDimensions {
         MatrixDimensions {rows: self.columns, columns: self.rows}
@@ -325,6 +370,14 @@ impl Display for MatrixDimensions
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}x{}", self.rows, self.columns)?;
+        std::fmt::Result::Ok(())
+    }
+}
+
+impl Display for MatrixIndex
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({},{})", self.0, self.1)?;
         std::fmt::Result::Ok(())
     }
 }
@@ -408,13 +461,13 @@ impl MatrixLinearIndex {
             row_stride: self.col_stride, col_stride: self.row_stride}
     }
 
-    pub fn new_row_stride(
+    pub const fn new_row_stride(
         dimensions: MatrixDimensions,
         row_stride: usize) -> MatrixLinearIndex {
         MatrixLinearIndex {dimensions, row_stride, col_stride: 1, offset: 0}
     }
 
-    pub fn new_col_stride(
+    pub const fn new_col_stride(
         dimensions: MatrixDimensions,
         col_stride: usize) -> MatrixLinearIndex {
         MatrixLinearIndex {dimensions, row_stride: 1, col_stride, offset: 0}

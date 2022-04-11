@@ -1,9 +1,14 @@
 [
   [
     {
-      "dimensions": {
-        "rows": 10,
-        "columns": 784
+      "linear_index": {
+        "dimensions": {
+          "rows": 10,
+          "columns": 784
+        },
+        "row_stride": 784,
+        "col_stride": 1,
+        "offset": 0
       },
       "elements": [
         -0.4643782612033336,
@@ -7846,9 +7851,7 @@
         -0.34194476691047937,
         -0.22905228882004103,
         -0.9274447169383029
-      ],
-      "row_stride": 784,
-      "col_stride": 1
+      ]
     }
   ]
 ]

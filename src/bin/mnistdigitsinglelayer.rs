@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
-use machlearn::datasets::mnistdigits;
+use machlearn::datasets::{imagedatasets, mnistdigits};
 use machlearn::neuralnetwork::Network;
 
 fn main() {
@@ -60,7 +60,7 @@ fn main() {
                                                       &mut row_elms,
                                                       mnistdigits::IMAGE_WIDTH_HEIGHT);
             println!("kernel {}:\n", row);
-            mnistdigits::print_matrix(&kernel);
+            imagedatasets::print_matrix(&kernel);
         }
     }
 

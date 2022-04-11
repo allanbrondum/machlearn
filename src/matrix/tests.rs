@@ -454,6 +454,19 @@ fn all_elements_iter() {
 }
 
 #[test]
+fn all_elements_enumerated_iter() {
+    let mut a = Matrix::new(3, 2);
+    a[(0, 0)] = 1.1;
+    a[(0, 1)] = 2.1;
+    a[(1, 0)] = 3.1;
+    a[(1, 1)] = 4.1;
+
+    let vecres: Vec<_> = a.iter_enum().collect();
+
+    assert_eq!(vec!(((0,0), &1.1), ((0,1), &2.1), ((1,0), &3.1), ((1,1), &4.1), ((2,0), &0.0), ((2,1), &0.0)), vecres);
+}
+
+#[test]
 fn col_iter() {
     let mut a = Matrix::new( 3, 2);
     a[(0,0)] = 1.1;
