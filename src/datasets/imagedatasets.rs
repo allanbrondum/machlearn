@@ -62,9 +62,9 @@ fn index_of_max<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) -> MatrixIndex {
     matrix.iter_enum().max_by(|x, y| cmp_ampl(*x.1, *y.1)).unwrap().0
 }
 
-pub fn test_correct_percentage(network: &Network, samples: impl ParallelIterator<Item=Sample>,
+pub fn test_correct_percentage(network: &Network, test_samples: impl ParallelIterator<Item=Sample>,
                                input_matrix_index: MatrixLinearIndex, output_matrix_index: MatrixLinearIndex, print: bool) -> f64 {
-    let result: (usize, usize) = samples.map(|sample| {
+    let result: (usize, usize) = test_samples.map(|sample| {
         let output = network.evaluate_input(&sample.0);
         let output_matrix = SliceView::new(output_matrix_index, output.as_slice());
         let guess_index = index_of_max(&output_matrix);

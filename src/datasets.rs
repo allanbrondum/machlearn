@@ -4,3 +4,5 @@
 pub mod mnistdigits;
 /// Common for image based data sets
 pub mod imagedatasets;
+/// Synthetic data for testing convolutional network
+pub mod convolutiontest;

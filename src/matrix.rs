@@ -321,6 +321,13 @@ impl<T> Matrix<T>
         }
     }
 
+    pub fn new_with_indexing(linear_index: MatrixLinearIndex) -> Matrix<T> {
+        Matrix {
+            linear_index: linear_index,
+            elements: vec![T::default(); linear_index.required_length()]
+        }
+    }
+
     pub fn new_from_elements(linear_index:  MatrixLinearIndex, elements: Vec<T>) -> Matrix<T> {
         assert!(linear_index.required_length() <= elements.len(), "Required length {}, elements length {}", linear_index.required_length(), elements.len());
         Matrix {
@@ -398,6 +405,10 @@ impl<T> Matrix<T>
         for elm in &mut self.elements {
             *elm = func(*elm);
         }
+    }
+
+    pub fn into_elements(self) -> Vec<T> {
+        self.elements
     }
 }
 
