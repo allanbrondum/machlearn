@@ -49,7 +49,7 @@ pub fn print_data_examples() {
 }
 
 fn print_samples(label_bytes: &mut impl Iterator<Item=Sample>) {
-    imagedatasets::print_samples(label_bytes, INPUT_INDEX, OUTPUT_INDEX);
+    imagedatasets::print_samples(label_bytes, INPUT_INDEX, &vec!(OUTPUT_INDEX));
 }
 
 fn get_learning_data() -> impl Iterator<Item=(u8, ImageArray)> {
@@ -82,5 +82,5 @@ fn get_data_sets(label_file_path: &str, image_file_path: &str) -> impl Iterator<
 
 
 pub fn test_correct_percentage(network: &Network, test_samples: impl ParallelIterator<Item=Sample>, print: bool) -> f64 {
-    imagedatasets::test_correct_percentage(network, test_samples, INPUT_INDEX, OUTPUT_INDEX, print)
+    imagedatasets::test_correct_percentage(network, test_samples, OUTPUT_INDEX, print)
 }

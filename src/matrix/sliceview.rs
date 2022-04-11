@@ -83,7 +83,7 @@ impl<'a, T: MatrixElement> SliceView<'a, T> {
     }
 
     pub fn new(linear_index: MatrixLinearIndex, inner: &'a [T]) -> SliceView<'a, T> {
-        assert_eq!(linear_index.required_length(), inner.len());
+        assert!(linear_index.required_length() <= inner.len());
         SliceView {linear_index, inner}
     }
 }

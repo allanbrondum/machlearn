@@ -4,13 +4,15 @@ use rayon::iter::ParallelIterator;
 use crate::matrix::{MatrixIndex, MatrixLinearIndex, MatrixT, SliceView};
 use crate::neuralnetwork::{Ampl, Network, Sample};
 
-pub fn print_sample(sample: &Sample, input_matrix_index: MatrixLinearIndex, output_matrix_index: MatrixLinearIndex) {
+pub fn print_sample(sample: &Sample, input_matrix_index: MatrixLinearIndex, output_matrix_indexes: &Vec<MatrixLinearIndex>) {
     println!("Input:");
     print_matrix(&get_sample_input_matrix(&sample, input_matrix_index));
     println!("Output:");
-    let output_matrix = &get_sample_output_matrix(&sample, output_matrix_index);
-    print_matrix_max(output_matrix);
-    print_matrix(output_matrix);
+    for output_matrix_index in output_matrix_indexes {
+        let output_matrix = &get_sample_output_matrix(&sample, *output_matrix_index);
+        print_matrix_max(output_matrix);
+        print_matrix(output_matrix);
+    }
 }
 
 fn get_sample_output_matrix(sample: &Sample, output_matrix_index: MatrixLinearIndex) -> SliceView<Ampl> {
@@ -21,9 +23,9 @@ fn get_sample_input_matrix(sample: &Sample, input_matrix_index: MatrixLinearInde
     SliceView::new(input_matrix_index, sample.0.as_slice())
 }
 
-pub fn print_samples(samples: &mut impl Iterator<Item=Sample>, input_matrix_index: MatrixLinearIndex, output_matrix_index: MatrixLinearIndex) {
+pub fn print_samples(samples: &mut impl Iterator<Item=Sample>, input_matrix_index: MatrixLinearIndex, output_matrix_indexes: &Vec<MatrixLinearIndex>) {
     for data_set in samples {
-        print_sample(&data_set, input_matrix_index, output_matrix_index);
+        print_sample(&data_set, input_matrix_index, output_matrix_indexes);
     }
 }
 
@@ -62,8 +64,7 @@ fn index_of_max<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) -> MatrixIndex {
     matrix.iter_enum().max_by(|x, y| cmp_ampl(*x.1, *y.1)).unwrap().0
 }
 
-pub fn test_correct_percentage(network: &Network, test_samples: impl ParallelIterator<Item=Sample>,
-                               input_matrix_index: MatrixLinearIndex, output_matrix_index: MatrixLinearIndex, print: bool) -> f64 {
+pub fn test_correct_percentage(network: &Network, test_samples: impl ParallelIterator<Item=Sample>, output_matrix_index: MatrixLinearIndex, print: bool) -> f64 {
     let result: (usize, usize) = test_samples.map(|sample| {
         let output = network.evaluate_input(&sample.0);
         let output_matrix = SliceView::new(output_matrix_index, output.as_slice());

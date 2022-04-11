@@ -22,29 +22,36 @@ pub const INPUT_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(Mat
 pub const OUTPUT_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows:IMAGE_WIDTH_HEIGHT, columns:IMAGE_WIDTH_HEIGHT}, IMAGE_WIDTH_HEIGHT);
 
 const CROSS_PATTERN: &[(i32, i32)] = &[(0,0), (1,1), (2,2), (-1,-1), (-2,-2), (-1,1), (-2,2), (1,-1), (2,-2)];
+const SQUARE_PATTERN: &[(i32, i32)] = &[(0,2), (1,2), (2,2), (2,1), (2,0), (2,-1), (2,-2), (1,-2), (0,-2), (-1,-2), (-2,-2), (-2,-1), (-2,0), (-2,1), (-2,2), (-1,2)];
+const SYMBOLS: &[&[(i32, i32)]] = &[CROSS_PATTERN, SQUARE_PATTERN];
 
-pub fn get_learning_samples() -> impl Iterator<Item=Sample> {
+pub fn get_learning_samples(symbols: usize) -> impl Iterator<Item=Sample> {
     let mut rng: Pcg64 = Seeder::from(0).make_rng();
-    get_samples(rng)
+    get_samples(symbols, rng)
 }
 
-pub fn get_test_samples() -> impl Iterator<Item=Sample> {
+pub fn get_test_samples(symbols: usize) -> impl Iterator<Item=Sample> {
     let mut rng: Pcg64 = Seeder::from(1).make_rng();
-    get_samples(rng)
+    get_samples(symbols, rng)
 }
 
-fn get_samples(mut rng: impl Rng) -> impl Iterator<Item=Sample> {
+fn get_samples(symbols: usize, mut rng: impl Rng) -> impl Iterator<Item=Sample> {
     iter::from_fn(move || {
-        let x = rng.gen_range(0..(IMAGE_WIDTH_HEIGHT as i32));
-        let y = rng.gen_range(0..(IMAGE_WIDTH_HEIGHT as i32));
-
         let mut input_image = Matrix::new_with_indexing(INPUT_INDEX);
-        set_pattern(&mut input_image, (x, y), CROSS_PATTERN);
-        let mut output_image = Matrix::new_with_indexing(OUTPUT_INDEX);
-        let matrix_index = x_y_to_row_col(&output_image, (x, y)).unwrap();
-        output_image[matrix_index] = 1.0;
+        let mut output_vec = Vec::new();
+        for i in 0..symbols {
+            let x = rng.gen_range(2..(IMAGE_WIDTH_HEIGHT as i32 - 2));
+            let y = rng.gen_range(2..(IMAGE_WIDTH_HEIGHT as i32 - 2));
 
-        Some(Sample(Vector::from_vec(input_image.into_elements()), Vector::from_vec(output_image.into_elements())))
+            set_pattern(&mut input_image, (x, y), SYMBOLS[i]);
+
+            let mut output_image = Matrix::new_with_indexing(OUTPUT_INDEX);
+            let matrix_index = x_y_to_row_col(&output_image, (x, y)).unwrap();
+            output_image[matrix_index] = 1.0;
+            output_vec.append(&mut output_image.into_elements());
+        }
+
+        Some(Sample(Vector::from_vec(input_image.into_elements()), Vector::from_vec(output_vec)))
     })
 }
 
@@ -68,20 +75,26 @@ fn x_y_to_row_col(matrix: &Matrix<Ampl>, (x, y): (i32, i32)) -> Option<(usize, u
     }
 }
 
-pub fn print_data_examples() {
+pub fn print_data_examples(symbols: usize) {
     const SAMPLE_SIZE: usize = 10;
 
-    let mut learning_data = get_learning_samples();
-    print_samples(&mut learning_data.by_ref().take(SAMPLE_SIZE));
+    println!("Learning samples");
+    let mut learning_data = get_learning_samples(symbols);
+    print_samples(symbols, &mut learning_data.by_ref().take(SAMPLE_SIZE));
 
-    let mut test_data = get_test_samples();
-    print_samples(&mut test_data.by_ref().take(SAMPLE_SIZE));
+    println!("Test samples");
+    let mut test_data = get_test_samples(symbols);
+    print_samples(symbols, &mut test_data.by_ref().take(SAMPLE_SIZE));
 }
 
-fn print_samples(label_bytes: &mut impl Iterator<Item=Sample>) {
-    imagedatasets::print_samples(label_bytes, INPUT_INDEX, OUTPUT_INDEX);
+fn print_samples(symbols: usize, label_bytes: &mut impl Iterator<Item=Sample>) {
+    let mut output_indexes = Vec::new();
+    for i in 0..symbols {
+        output_indexes.push(OUTPUT_INDEX.add_offset(i * IMAGE_PIXEL_COUNT));
+    }
+    imagedatasets::print_samples(label_bytes, INPUT_INDEX, &output_indexes);
 }
 
 pub fn test_correct_percentage(network: &Network, test_samples: impl ParallelIterator<Item=Sample>, print: bool) -> f64 {
-    imagedatasets::test_correct_percentage(network, test_samples, INPUT_INDEX, OUTPUT_INDEX, print)
+    imagedatasets::test_correct_percentage(network, test_samples, OUTPUT_INDEX, print)
 }

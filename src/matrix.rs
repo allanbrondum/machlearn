@@ -472,6 +472,10 @@ impl MatrixLinearIndex {
             row_stride: self.col_stride, col_stride: self.row_stride}
     }
 
+    pub fn add_offset(self, offset_delta: usize) -> MatrixLinearIndex {
+        MatrixLinearIndex {offset: self.offset + offset_delta, ..self}
+    }
+
     pub const fn new_row_stride(
         dimensions: MatrixDimensions,
         row_stride: usize) -> MatrixLinearIndex {

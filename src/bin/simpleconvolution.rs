@@ -20,12 +20,14 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
-use machlearn::datasets::{convolutiontest, imagedatasets, mnistdigits};
+use machlearn::datasets::{convolutiontest, imagedatasets};
 use machlearn::neuralnetwork::Network;
 
+const SYMBOLS: usize = 2;
+
 fn main() {
-    let mut network = Network::new_logistic_sigmoid(vec!(mnistdigits::IMAGE_PIXEL_COUNT, 10)); // single layer
-    convolutiontest::print_data_examples();
+    let mut network = Network::new_logistic_sigmoid(vec!(convolutiontest::IMAGE_PIXEL_COUNT, 10)); // single layer
+    convolutiontest::print_data_examples(SYMBOLS);
     if true {
         return;
     }
@@ -33,18 +35,18 @@ fn main() {
     network.set_random_weights_seed(0);
 
     const LEARNING_SAMPLES: usize = 10_000;
-    neuralnetwork::run_learning_iterations(&mut network, convolutiontest::get_learning_samples().take(LEARNING_SAMPLES), 0.3);
+    neuralnetwork::run_learning_iterations(&mut network, convolutiontest::get_learning_samples(SYMBOLS).take(LEARNING_SAMPLES), 0.3);
 
     if false {
-        neuralnetwork::run_and_print_learning_iterations(&mut network, convolutiontest::get_learning_samples().take(20), 0.3);
+        neuralnetwork::run_and_print_learning_iterations(&mut network, convolutiontest::get_learning_samples(SYMBOLS).take(20), 0.3);
     }
 
     const TEST_SAMPLES: usize = 1000;
     // let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
-    let errsqr = neuralnetwork::run_test_iterations_parallel(&network, convolutiontest::get_test_samples().take(TEST_SAMPLES).par_bridge());
+    let errsqr = neuralnetwork::run_test_iterations_parallel(&network, convolutiontest::get_test_samples(SYMBOLS).take(TEST_SAMPLES).par_bridge());
 
-    convolutiontest::test_correct_percentage(&network, mnistdigits::get_test_samples().take(20).par_bridge(), true);
-    let pct_correct = convolutiontest::test_correct_percentage(&network, mnistdigits::get_test_samples().take(TEST_SAMPLES).par_bridge(), false);
+    convolutiontest::test_correct_percentage(&network, convolutiontest::get_test_samples(SYMBOLS).take(20).par_bridge(), true);
+    let pct_correct = convolutiontest::test_correct_percentage(&network, convolutiontest::get_test_samples(SYMBOLS).take(TEST_SAMPLES).par_bridge(), false);
 
     println!("error squared: {:.5}", errsqr);
     println!("% correct: {:.2}", pct_correct);
