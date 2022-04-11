@@ -42,18 +42,6 @@ impl MatrixElement for i32 {
 impl MatrixElement for i64 {
 }
 
-/// Matrix with arithmetic operations.
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-#[derive(Serialize, Deserialize)]
-pub struct Matrix<T>
-    where T: MatrixElement
-{
-    dimensions: MatrixDimensions,
-    elements: Vec<T>,
-    row_stride: usize,
-    col_stride: usize
-}
-
 pub trait MatrixT<'a, T: MatrixElement> {
     type ColIter : Iterator<Item = &'a T> + 'a;
     type RowIter : Iterator<Item = &'a T> + 'a;
@@ -178,7 +166,7 @@ impl<'a, T: MatrixElement, M: MatrixT<'a, T>> Iterator for AllElementsIter<'a, T
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(elm) = self.current_row_iter.next() {
             Some(elm)
-        } else if (self.current_row + 1 < self.inner.row_count()) {
+        } else if self.current_row + 1 < self.inner.row_count() {
             self.current_row += 1;
             self.current_row_iter = self.inner.row_iter(self.current_row);
             self.current_row_iter.next()
@@ -188,6 +176,16 @@ impl<'a, T: MatrixElement, M: MatrixT<'a, T>> Iterator for AllElementsIter<'a, T
     }
 }
 
+/// Matrix with arithmetic operations.
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Serialize, Deserialize)]
+pub struct Matrix<T>
+    where T: MatrixElement
+{
+    linear_index: MatrixLinearIndex,
+    elements: Vec<T>,
+}
+
 impl<'a, T> MatrixT<'a, T> for Matrix<T>
     where T: MatrixElement
 {
@@ -195,26 +193,25 @@ impl<'a, T> MatrixT<'a, T> for Matrix<T>
     type RowIter = StrideIter<'a, T>;
 
     fn dimensions(&self) -> MatrixDimensions {
-        self.dimensions
+        self.linear_index.dimensions
     }
 
     fn elm(&self, row: usize, col:usize) -> &T {
-        &self.elements[self.lin_index(row, col)]
+        &self.elements[self.linear_index.lin_index(row, col)]
     }
 
     fn elm_mut(&mut self, row: usize, col:usize) -> &mut T {
-        let index = self.lin_index(row, col);
-        &mut self.elements[index]
+        &mut self.elements[self.linear_index.lin_index(row, col)]
     }
 
     fn row_iter(&'a self, row: usize) -> Self::RowIter {
-        let offset = self.lin_index(row, 0);
-        StrideIter::new(self.elements.as_slice(), offset, self.col_stride, self.dimensions.columns)
+        let offset = self.linear_index.lin_index(row, 0);
+        StrideIter::new(self.elements.as_slice(), offset, self.linear_index.col_stride, self.linear_index.dimensions.columns)
     }
 
     fn col_iter(&'a self, col: usize) -> Self::ColIter {
-        let offset = self.lin_index(0, col);
-        StrideIter::new(self.elements.as_slice(), offset, self.row_stride, self.dimensions.rows)
+        let offset = self.linear_index.lin_index(0, col);
+        StrideIter::new(self.elements.as_slice(), offset, self.linear_index.row_stride, self.linear_index.dimensions.rows)
     }
 
 }
@@ -222,21 +219,13 @@ impl<'a, T> MatrixT<'a, T> for Matrix<T>
 impl<T> Matrix<T>
     where T: MatrixElement
 {
-    fn lin_index(&self, row: usize, col:usize) -> usize {
-        row * self.row_stride + col * self.col_stride
-    }
 
     pub fn transpose(self) -> Matrix<T>
         where Self: Sized
     {
         Matrix {
-            dimensions: MatrixDimensions {
-                columns: self.dimensions.rows,
-                rows: self.dimensions.columns
-            },
+            linear_index: self.linear_index.transpose(),
             elements: self.elements,
-            row_stride: self.col_stride,
-            col_stride: self.row_stride
         }
     }
 
@@ -278,21 +267,19 @@ impl<T> Matrix<T>
 {
     pub fn new(rows: usize, columns: usize) -> Matrix<T> {
         Matrix {
-            dimensions: MatrixDimensions { rows, columns },
+            linear_index: MatrixLinearIndex::new_row_stride(
+                MatrixDimensions { rows, columns },
+                columns,
+            ),
             elements: vec![Default::default(); rows * columns],
-            row_stride: columns,
-            col_stride: 1
         }
     }
 
-    pub fn new_from_elements(rows: usize, columns: usize, elements: Vec<T>,
-                             row_stride: usize, col_stride: usize) -> Matrix<T> {
-        assert_eq!((rows - 1) * row_stride + (columns - 1) * col_stride + 1, elements.len());
+    pub fn new_from_elements(linear_index:  MatrixLinearIndex, elements: Vec<T>) -> Matrix<T> {
+        assert!(linear_index.required_length() <= elements.len(), "Required length {}, elements length {}", linear_index.required_length(), elements.len());
         Matrix {
-            dimensions: MatrixDimensions { rows, columns },
+            linear_index: linear_index,
             elements,
-            row_stride,
-            col_stride
         }
     }
 }
@@ -394,6 +381,45 @@ impl<'a, T> Iterator for StrideIter<'a, T> {
     }
 }
 
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Serialize, Deserialize)]
+pub struct MatrixLinearIndex {
+    pub dimensions: MatrixDimensions,
+    pub row_stride: usize,
+    pub col_stride: usize,
+    pub offset: usize,
+}
+
+impl MatrixLinearIndex {
+    pub fn lin_index(&self, row: usize, col:usize) -> usize {
+        assert!(row < self.dimensions.rows, "Row index {} out of bounds for number of rows {}", row, self.dimensions.rows);
+        assert!(col < self.dimensions.columns, "Column index {} out of bounds for number of columns {}", col, self.dimensions.columns);
+        row * self.row_stride + col * self.col_stride + self.offset
+    }
+
+    pub fn required_length(&self) -> usize {
+        (self.dimensions.rows - 1) * self.row_stride + (self.dimensions.columns - 1) * self.col_stride + self.offset + 1
+    }
+
+    pub fn transpose(self) -> MatrixLinearIndex {
+        MatrixLinearIndex {dimensions: self.dimensions.transpose(), offset: self.offset,
+            row_stride: self.col_stride, col_stride: self.row_stride}
+    }
+
+    pub fn new_row_stride(
+        dimensions: MatrixDimensions,
+        row_stride: usize) -> MatrixLinearIndex {
+        MatrixLinearIndex {dimensions, row_stride, col_stride: 1, offset: 0}
+    }
+
+    pub fn new_col_stride(
+        dimensions: MatrixDimensions,
+        col_stride: usize) -> MatrixLinearIndex {
+        MatrixLinearIndex {dimensions, row_stride: 1, col_stride, offset: 0}
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::matrix::*;
@@ -436,9 +462,8 @@ mod tests {
     #[test]
     fn matrix_with_col_stride() {
         let mut a = Matrix::new_from_elements(
-            3, 2,
-            vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1),
-            1, 3);
+            MatrixLinearIndex::new_col_stride(MatrixDimensions{rows: 3, columns: 2}, 3),
+            vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1));
 
         a[(0,0)] = 1.1;
         a[(1,0)] = 2.1;
@@ -487,9 +512,8 @@ mod tests {
     #[test]
     fn matrix_with_row_stride() {
         let mut a = Matrix::new_from_elements(
-            3, 2,
-            vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1),
-            2, 1);
+            MatrixLinearIndex::new_row_stride(MatrixDimensions{rows: 3, columns: 2}, 2),
+            vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1));
 
         a[(0,0)] = 1.1;
         a[(1,0)] = 2.1;
@@ -538,10 +562,10 @@ mod tests {
     #[test]
     fn matrix_vector_view_with_col_stride() {
         let mut vec = vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1);
-        let mut a = SliceView::new(
+        let mut a = SliceView::new_col_stride(
             3, 2,
             &mut vec,
-            1, 3);
+            3);
 
         *a.elm_mut(0,0) = 1.1;
         *a.elm_mut(1,0) = 2.1;
@@ -584,10 +608,10 @@ mod tests {
     #[test]
     fn matrix_vector_view_with_row_stride() {
         let mut vec = vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1);
-        let mut a = SliceView::new(
+        let mut a = SliceView::new_row_stride(
             3, 2,
             &mut vec,
-            2, 1);
+            2);
 
         *a.elm_mut(0,0) = 1.1;
         *a.elm_mut(1,0) = 2.1;
@@ -1175,3 +1199,4 @@ mod tests {
     }
 
 }
+

@@ -57,12 +57,11 @@ fn print_data_series(label_bytes: &mut impl Iterator<Item=(u8, ImageArray)>) {
 
 fn print_image(image_array: ImageArray) {
     let mut vec: Vec<_> = image_array.into_iter().map(|item| item as Ampl).collect();
-    let view = SliceView::new(
+    let view = SliceView::new_row_stride(
         IMAGE_WIDTH_HEIGHT,
         IMAGE_WIDTH_HEIGHT,
         &mut vec,
-        IMAGE_WIDTH_HEIGHT,
-        1);
+        IMAGE_WIDTH_HEIGHT);
     print_matrix(&view);
 }
 

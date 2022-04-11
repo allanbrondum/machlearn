@@ -3,11 +3,9 @@
 use std::fmt::{Display, Formatter};
 use serde::{Serialize, Deserialize};
 use std::ops::{Index, IndexMut, Deref};
-
-
 use itertools::Itertools;
 
-use crate::matrix::{Matrix, MatrixElement};
+use crate::matrix::{Matrix, MatrixDimensions, MatrixElement, MatrixLinearIndex, MatrixT, SliceView};
 
 /// Operator implementations for vector
 mod arit;
@@ -57,13 +55,17 @@ impl<T> Vector<T>
     }
 
     pub fn to_matrix(self) -> Matrix<T> {
-        let len = self.len();
-        Matrix::new_from_elements(len, 1, self.elements,
-                                  1, len)
+        Matrix::new_from_elements(
+            self.matrix_linear_index(),
+            self.elements)
     }
 
-    pub fn as_matrix(&self) -> Matrix<T> {
-        todo!("implement")
+    pub fn as_matrix(&mut self) -> impl MatrixT<T> {
+        SliceView::new(self.matrix_linear_index(), &mut self.elements)
+    }
+
+    fn matrix_linear_index(&self) -> MatrixLinearIndex {
+        MatrixLinearIndex::new_col_stride(MatrixDimensions { rows: self.len(), columns: 1 }, self.len())
     }
 
     pub fn push(&mut self, elm: T) {
@@ -316,6 +318,19 @@ mod tests {
         a[1] = 2.1;
 
         let m = a.to_matrix();
+
+        assert_eq!(MatrixDimensions {rows: 2, columns: 1}, m.dimensions());
+        assert_eq!(1.1, *m.elm(0, 0));
+        assert_eq!(2.1, *m.elm(1, 0));
+    }
+
+    #[test]
+    fn as_matrix() {
+        let mut a = Vector::new( 2);
+        a[0] = 1.1;
+        a[1] = 2.1;
+
+        let m = a.as_matrix();
 
         assert_eq!(MatrixDimensions {rows: 2, columns: 1}, m.dimensions());
         assert_eq!(1.1, *m.elm(0, 0));
