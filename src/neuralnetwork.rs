@@ -3,7 +3,7 @@
 use std::any::Any;
 use std::fmt::{Debug, Display, Formatter};
 use crate::vector::{Vector};
-use crate::matrix::{Matrix, MatrixT};
+use crate::matrix::{Matrix, MatrixDimensions, MatrixLinearIndex, MatrixT, SliceView};
 use rand::Rng;
 use rayon::prelude::*;
 use std::time::Instant;
@@ -19,15 +19,11 @@ use rand_seeder::Seeder;
 
 pub type Ampl = f64;
 
+#[cfg(test)]
+mod tests;
+
 /// Sample tuple, .0: input, .1: output
 pub struct Sample(pub Vector<Ampl>, pub Vector<Ampl>);
-
-#[derive(Debug, Clone)]
-pub struct FullyConnectedLayer
-{
-    weights: Matrix<Ampl>,
-    biases: bool,
-}
 
 pub trait Layer : Display + Debug + Sync {
     fn get_weights(&self) -> Vec<&Matrix<Ampl>>;
@@ -47,6 +43,13 @@ pub trait Layer : Display + Debug + Sync {
     fn backpropagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl>;
 
     fn as_any(&self) -> &dyn Any;
+}
+
+#[derive(Debug, Clone)]
+pub struct FullyConnectedLayer
+{
+    weights: Matrix<Ampl>,
+    biases: bool,
 }
 
 impl FullyConnectedLayer {
@@ -83,12 +86,12 @@ impl Layer for FullyConnectedLayer {
 
     fn set_random_weights(&mut self) {
         let mut rng = rand::thread_rng();
-        self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
+        self.set_random_weights_impl(rng);
     }
 
     fn set_random_weights_seed(&mut self, seed: u64) {
         let mut rng: Pcg64 = Seeder::from(0).make_rng();
-        self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
+        self.set_random_weights_impl(rng);
     }
 
     fn evaluate_input(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl> {
@@ -110,6 +113,117 @@ impl Layer for FullyConnectedLayer {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+impl FullyConnectedLayer {
+    fn set_random_weights_impl<R: Rng>(&mut self, mut rng: R) {
+        self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ConvolutionalLayer
+{
+    input_matrix_index: MatrixLinearIndex,
+    kernel_dimension: MatrixDimensions,
+    kernels: Vec<Matrix<Ampl>>,
+}
+
+impl ConvolutionalLayer {
+    pub fn new(input_matrix_index: MatrixLinearIndex, kernel_dimension: MatrixDimensions, kernels: usize) -> ConvolutionalLayer {
+        ConvolutionalLayer {
+            input_matrix_index,
+            kernel_dimension,
+            kernels: (0..kernels).map(|_| Matrix::new_with_dimension(kernel_dimension)).collect(),
+        }
+    }
+}
+
+impl Layer for ConvolutionalLayer {
+
+    fn get_weights(&self) -> Vec<&Matrix<Ampl>> {
+        self.kernels.iter().collect()
+    }
+
+    fn set_weights(&mut self, new_weights: Vec<Matrix<Ampl>>) {
+        assert_eq!(self.kernels.len(), new_weights.len(), "Should have {} kernels, was {}", self.kernels.len(), new_weights.len());
+        self.kernels.clear();
+        for kernel in new_weights {
+            if kernel.dimensions() != self.kernel_dimension {
+                panic!("Kernel dimensions for layer {} does not equals dimension of weights to set {}", self.kernel_dimension, kernel.dimensions());
+            }
+            self.kernels.push(kernel);
+        }
+    }
+
+    fn get_input_dimension(&self) -> usize {
+        self.input_matrix_index.required_length()
+    }
+
+    fn get_output_dimension(&self) -> usize {
+        self.get_kernel_output_indexing().required_length() * self.kernels.len()
+    }
+
+    fn set_random_weights(&mut self) {
+        let mut rng = rand::thread_rng();
+        self.set_random_weights_impl(rng);
+    }
+
+    fn set_random_weights_seed(&mut self, seed: u64) {
+        let rng: Pcg64 = Seeder::from(0).make_rng();
+        self.set_random_weights_impl(rng);
+    }
+
+    fn evaluate_input(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl> {
+        // let input_matrix = SliceView::new(self.input_matrix_index, input.as_slice());
+
+        let mut output = Vector::<Ampl>::new(self.get_output_dimension());
+        let kernel_output_indexing = self.get_kernel_output_indexing();
+
+        for (kernel_index, kernel) in self.kernels.iter().enumerate() {
+            let kernel_output_matrix = SliceView::new(
+                kernel_output_indexing.add_offset(kernel_index * kernel_output_indexing.required_length()),
+                output.as_mut_slice());
+
+            // kernel_output_matrix.iter_enum()
+
+        }
+
+        // if input.len() != self.get_input_dimension() {
+        //     panic!("Input state length {} not equals to weights column count {}", input.len(), self.weights.dimensions().columns);
+        // }
+        // self.weights.mul_vector(input).apply(sigmoid)
+        output
+    }
+
+    fn backpropagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl> {
+        // let delta_output = self.weights.mul_vector(input).apply(sigmoid_derived).mul_comp(gamma_output);
+        // let gamma_input = self.weights.mul_vector_lhs(&delta_output);
+        //
+        // // adjust weights
+        // self.weights -= ny * delta_output.to_matrix().mul_mat(&input.clone().to_matrix().transpose());
+        //
+        // gamma_input
+
+        Vector::new(0)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl ConvolutionalLayer {
+    fn set_random_weights_impl<R: Rng>(&mut self, mut rng: R) {
+        self.kernels.iter_mut().for_each(|kern| kern.apply_ref(|_| rng.gen_range(-1.0..1.0)));
+    }
+
+    fn get_kernel_output_indexing(&self) -> MatrixLinearIndex {
+        MatrixLinearIndex::new_row_stride(MatrixDimensions {
+            rows: self.input_matrix_index.dimensions.rows - self.kernel_dimension.rows + 1,
+            columns: self.input_matrix_index.dimensions.columns - self.kernel_dimension.columns + 1,
+        })
     }
 }
 
@@ -278,8 +392,6 @@ impl Display for Network
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 
-        // write!(f, "input state: {}\n\n", self.input_state)?;
-
         for layer in self.layers.iter().enumerate() {
             write!(f, "layer {}\n{}", layer.0, layer.1)?;
         }
@@ -291,9 +403,18 @@ impl Display for Network
 impl Display for FullyConnectedLayer
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        // write!(f, "backpropagation\n{}", self.backpropagation_gamma)?;
         write!(f, "weights\n{}", self.weights)?;
-        // write!(f, "output state: {}\n", self.output_state)?;
+
+        std::fmt::Result::Ok(())
+    }
+}
+
+impl Display for ConvolutionalLayer
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (index, kernel) in self.kernels.iter().enumerate() {
+            write!(f, "kernel {}\n{}", index, kernel)?;
+        }
 
         std::fmt::Result::Ok(())
     }

@@ -65,7 +65,7 @@ impl<T> Vector<T>
     }
 
     fn matrix_linear_index(&self) -> MatrixLinearIndex {
-        MatrixLinearIndex::new_col_stride(MatrixDimensions { rows: self.len(), columns: 1 }, self.len())
+        MatrixLinearIndex::new_col_stride(MatrixDimensions { rows: self.len(), columns: 1 })
     }
 
     pub fn push(&mut self, elm: T) {

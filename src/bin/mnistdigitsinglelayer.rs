@@ -31,7 +31,7 @@ fn main() {
     if !read_from_file {
         network.set_random_weights_seed(0);
 
-        const LEARNING_SAMPLES: usize = 60_000;
+        const LEARNING_SAMPLES: usize = 10_000;
         neuralnetwork::run_learning_iterations(&mut network, mnistdigits::get_learning_samples().take(LEARNING_SAMPLES), 0.3);
     } else {
         neuralnetwork::read_network_from_file(&mut network, "mnist_twolayer_weights.json");
@@ -58,8 +58,7 @@ fn main() {
         for row in 0..weights.row_count() {
             let mut row_elms: Vec<_> = weights.row_iter(row).copied().collect();
             let kernel = MutSliceView::new_row_stride(mnistdigits::IMAGE_WIDTH_HEIGHT, mnistdigits::IMAGE_WIDTH_HEIGHT,
-                                                      &mut row_elms,
-                                                      mnistdigits::IMAGE_WIDTH_HEIGHT);
+                                                      &mut row_elms);
             println!("kernel {}:\n", row);
             imagedatasets::print_matrix(&kernel);
         }

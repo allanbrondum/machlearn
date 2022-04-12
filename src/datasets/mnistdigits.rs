@@ -15,8 +15,8 @@ pub const IMAGE_WIDTH_HEIGHT: usize = 28;
 pub const IMAGE_PIXEL_COUNT: usize = IMAGE_WIDTH_HEIGHT * IMAGE_WIDTH_HEIGHT;
 pub type ImageArray = [u8; IMAGE_PIXEL_COUNT];
 
-pub const INPUT_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows:IMAGE_WIDTH_HEIGHT, columns:IMAGE_WIDTH_HEIGHT}, IMAGE_WIDTH_HEIGHT);
-pub const OUTPUT_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows:1, columns:10}, 10);
+pub const INPUT_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows:IMAGE_WIDTH_HEIGHT, columns:IMAGE_WIDTH_HEIGHT});
+pub const OUTPUT_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows:1, columns:10});
 
 /// 60_000 learning samples
 pub fn get_learning_samples() -> impl Iterator<Item=Sample> {

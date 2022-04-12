@@ -38,7 +38,7 @@ fn index() {
 #[test]
 fn matrix_with_col_stride() {
     let mut a = Matrix::new_from_elements(
-        MatrixLinearIndex::new_col_stride(MatrixDimensions{rows: 3, columns: 2}, 3),
+        MatrixLinearIndex::new_col_stride(MatrixDimensions{rows: 3, columns: 2}),
         vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1));
 
     a[(0,0)] = 1.1;
@@ -88,7 +88,7 @@ fn matrix_with_col_stride() {
 #[test]
 fn matrix_with_row_stride() {
     let mut a = Matrix::new_from_elements(
-        MatrixLinearIndex::new_row_stride(MatrixDimensions{rows: 3, columns: 2}, 2),
+        MatrixLinearIndex::new_row_stride(MatrixDimensions{rows: 3, columns: 2}),
         vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1));
 
     a[(0,0)] = 1.1;
@@ -140,8 +140,7 @@ fn matrix_mut_slice_view_with_col_stride() {
     let mut vec = vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1);
     let mut a = MutSliceView::new_col_stride(
         3, 2,
-        &mut vec,
-        3);
+        &mut vec);
 
     *a.elm_mut(0,0) = 1.1;
     *a.elm_mut(1,0) = 2.1;
@@ -186,8 +185,7 @@ fn matrix_mut_slice_view_with_row_stride() {
     let mut vec = vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1);
     let mut a = MutSliceView::new_row_stride(
         3, 2,
-        &mut vec,
-        2);
+        &mut vec);
 
     *a.elm_mut(0,0) = 1.1;
     *a.elm_mut(1,0) = 2.1;
@@ -232,8 +230,7 @@ fn matrix_slice_view_with_col_stride() {
     let vec = vec!(1.1, 2.1, 0.0, 3.1, 0.0, 4.1);
     let a = SliceView::new_col_stride(
         3, 2,
-        &vec,
-        3);
+        &vec);
 
     assert_eq!(1.1, *a.elm(0,0));
     assert_eq!(2.1, *a.elm(1,0));
@@ -273,8 +270,7 @@ fn matrix_slice_view_with_row_stride() {
     let vec = vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1);
     let a = SliceView::new_row_stride(
         3, 2,
-        &vec,
-        2);
+        &vec);
 
     assert_eq!(1.1, *a.elm(0,0));
     assert_eq!(2.1, *a.elm(1,0));
@@ -463,7 +459,30 @@ fn all_elements_enumerated_iter() {
 
     let vecres: Vec<_> = a.iter_enum().collect();
 
-    assert_eq!(vec!(((0,0), &1.1), ((0,1), &2.1), ((1,0), &3.1), ((1,1), &4.1), ((2,0), &0.0), ((2,1), &0.0)), vecres);
+    assert_eq!(vec!((MatrixIndex(0,0), &1.1), (MatrixIndex(0,1), &2.1), (MatrixIndex(1,0), &3.1),
+                    (MatrixIndex(1,1), &4.1), (MatrixIndex(2,0), &0.0), (MatrixIndex(2,1), &0.0)), vecres);
+}
+
+#[test]
+fn all_elements_enumerated_mut_iter() {
+    let mut a = Matrix::new(3, 2);
+    a[(0, 0)] = 1.1;
+    a[(0, 1)] = 2.1;
+    a[(1, 0)] = 3.1;
+    a[(1, 1)] = 4.1;
+
+    let vecres: Vec<_> = a.iter_mut_enum().collect();
+
+    assert_eq!(vec!((MatrixIndex(0,0), &mut 1.1), (MatrixIndex(0,1), &mut 2.1), (MatrixIndex(1,0), &mut 3.1),
+                    (MatrixIndex(1,1), &mut 4.1), (MatrixIndex(2,0), &mut 0.0), (MatrixIndex(2,1), &mut 0.0)), vecres);
+
+    for (index, (_, elm)) in a.iter_mut_enum().enumerate() {
+        *elm = index as f64;
+    }
+
+    let vecres: Vec<_> = a.iter_mut_enum().collect();
+    assert_eq!(vec!((MatrixIndex(0,0), &mut 0.0), (MatrixIndex(0,1), &mut 1.0), (MatrixIndex(1,0), &mut 2.0),
+                    (MatrixIndex(1,1), &mut 3.0), (MatrixIndex(2,0), &mut 4.0), (MatrixIndex(2,1), &mut 5.0)), vecres);
 }
 
 #[test]

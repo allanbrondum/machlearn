@@ -35,4 +35,5 @@ impl<'a, T: MatrixElement, M: MatrixT<'a, T>> MatrixT<'a, T> for TransposedMatri
     fn col_iter(&'a self, col: usize) -> Self::ColIter {
         self.inner.row_iter(col)
     }
+
 }

@@ -10,18 +10,16 @@ pub struct MutSliceView<'a, T: MatrixElement> {
 impl<'a, T: MatrixElement> MutSliceView<'a, T> {
     pub fn new_row_stride(rows: usize,
                columns: usize,
-               inner: &'a mut [T],
-               row_stride: usize) -> MutSliceView<'a, T> {
-        let linear_index = MatrixLinearIndex::new_row_stride(MatrixDimensions {rows, columns}, row_stride);
+               inner: &'a mut [T]) -> MutSliceView<'a, T> {
+        let linear_index = MatrixLinearIndex::new_row_stride(MatrixDimensions {rows, columns});
         Self::new(linear_index, inner)
     }
 
     pub fn new_col_stride(rows: usize,
                           columns: usize,
-                          inner: &'a mut [T],
-                          col_stride: usize) -> MutSliceView<'a, T> {
+                          inner: &'a mut [T]) -> MutSliceView<'a, T> {
 
-        let linear_index = MatrixLinearIndex::new_col_stride(MatrixDimensions {rows, columns}, col_stride);
+        let linear_index = MatrixLinearIndex::new_col_stride(MatrixDimensions {rows, columns});
         Self::new(linear_index, inner)
     }
 
@@ -57,6 +55,7 @@ impl<'a, T: MatrixElement> MatrixT<'a, T> for MutSliceView<'a, T> {
         let offset = self.linear_index.lin_index(0, col);
         StrideIter::new(self.inner, offset, self.linear_index.row_stride, self.linear_index.dimensions.rows)
     }
+
 }
 
 pub struct SliceView<'a, T: MatrixElement> {
@@ -67,18 +66,16 @@ pub struct SliceView<'a, T: MatrixElement> {
 impl<'a, T: MatrixElement> SliceView<'a, T> {
     pub fn new_row_stride(rows: usize,
                           columns: usize,
-                          inner: &'a [T],
-                          row_stride: usize) -> SliceView<'a, T> {
-        let linear_index = MatrixLinearIndex::new_row_stride(MatrixDimensions {rows, columns}, row_stride);
+                          inner: &'a [T]) -> SliceView<'a, T> {
+        let linear_index = MatrixLinearIndex::new_row_stride(MatrixDimensions {rows, columns});
         Self::new(linear_index, inner)
     }
 
     pub fn new_col_stride(rows: usize,
                           columns: usize,
-                          inner: &'a [T],
-                          col_stride: usize) -> SliceView<'a, T> {
+                          inner: &'a [T]) -> SliceView<'a, T> {
 
-        let linear_index = MatrixLinearIndex::new_col_stride(MatrixDimensions {rows, columns}, col_stride);
+        let linear_index = MatrixLinearIndex::new_col_stride(MatrixDimensions {rows, columns});
         Self::new(linear_index, inner)
     }
 
@@ -113,4 +110,5 @@ impl<'a, T: MatrixElement> MatrixT<'a, T> for SliceView<'a, T> {
         let offset = self.linear_index.lin_index(0, col);
         StrideIter::new(self.inner, offset, self.linear_index.row_stride, self.linear_index.dimensions.rows)
     }
+
 }

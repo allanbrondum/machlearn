@@ -69,8 +69,12 @@ pub trait MatrixT<'a, T: MatrixElement> {
         AllElementsIter::new(self)
     }
 
-    fn iter_enum(&'a self) -> AllElementsEnummeratedIter<'a, T, Self> where Self: Sized {
-        AllElementsEnummeratedIter::new(self)
+    fn iter_enum(&'a self) -> AllElementsEnumeratedIter<'a, T, Self> where Self: Sized {
+        AllElementsEnumeratedIter::new(self)
+    }
+
+    fn iter_mut_enum(&'a mut self) -> AllElementsEnumeratedMutIter<'a, T, Self> where Self: Sized {
+        AllElementsEnumeratedMutIter::new(self)
     }
 
     // fn iter_mut(&'a mut self) -> AllElementsIter<'a, T, Self> where Self: Sized {
@@ -181,16 +185,16 @@ impl<'a, T: MatrixElement, M: MatrixT<'a, T>> Iterator for AllElementsIter<'a, T
     }
 }
 
-pub struct AllElementsEnummeratedIter<'a, T: MatrixElement, M: MatrixT<'a, T>> {
+pub struct AllElementsEnumeratedIter<'a, T: MatrixElement, M: MatrixT<'a, T>> {
     inner: &'a M,
     current_row_iter: M::RowIter,
     current_row: usize,
     current_col: usize,
 }
 
-impl<'a, T: MatrixElement, M: MatrixT<'a, T>> AllElementsEnummeratedIter<'a, T, M> {
-    fn new(inner: &'a M) -> AllElementsEnummeratedIter<'a, T, M> {
-        AllElementsEnummeratedIter {
+impl<'a, T: MatrixElement, M: MatrixT<'a, T>> AllElementsEnumeratedIter<'a, T, M> {
+    fn new(inner: &'a M) -> AllElementsEnumeratedIter<'a, T, M> {
+        AllElementsEnumeratedIter {
             inner,
             current_row_iter: inner.row_iter(0),
             current_row: 0,
@@ -199,7 +203,7 @@ impl<'a, T: MatrixElement, M: MatrixT<'a, T>> AllElementsEnummeratedIter<'a, T, 
     }
 }
 
-impl<'a, T: MatrixElement, M: MatrixT<'a, T>> Iterator for AllElementsEnummeratedIter<'a, T, M> {
+impl<'a, T: MatrixElement, M: MatrixT<'a, T>> Iterator for AllElementsEnumeratedIter<'a, T, M> {
     type Item = (MatrixIndex, &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -217,6 +221,48 @@ impl<'a, T: MatrixElement, M: MatrixT<'a, T>> Iterator for AllElementsEnummerate
         }
     }
 }
+
+pub struct AllElementsEnumeratedMutIter<'a, T: MatrixElement + 'a, M: MatrixT<'a, T>> {
+    inner: &'a mut M,
+    current_row: usize,
+    current_col: usize,
+    _phantom: PhantomData<T>,
+}
+
+impl<'a, T: MatrixElement, M: MatrixT<'a, T>> AllElementsEnumeratedMutIter<'a, T, M> {
+    fn new(inner: &'a mut M) -> AllElementsEnumeratedMutIter<'a, T, M> {
+        Self {
+            inner,
+            current_row: 0,
+            current_col: 0,
+            _phantom: PhantomData
+        }
+    }
+}
+
+impl<'a, T: MatrixElement + 'a, M: MatrixT<'a, T>> Iterator for AllElementsEnumeratedMutIter<'a, T, M> {
+    type Item = (MatrixIndex, &'a mut T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_row == self.inner.row_count() {
+            return None
+        }
+        let matrix_index = MatrixIndex(self.current_row, self.current_col);
+
+        self.current_col += 1;
+        if self.current_col == self.inner.column_count() {
+            self.current_col = 0;
+            self.current_row += 1;
+        }
+
+        // https://stackoverflow.com/questions/63437935/in-rust-how-do-i-create-a-mutable-iterator
+        let element_pointer: *mut T = self.inner.elm_mut(matrix_index.0, matrix_index.1);
+        unsafe {
+            Some((matrix_index, &mut *element_pointer))
+        }
+    }
+}
+
 
 /// Matrix with arithmetic operations.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -298,6 +344,12 @@ pub struct MatrixDimensions {
     pub columns: usize
 }
 
+impl MatrixDimensions {
+    pub fn cell_count(&self) -> usize {
+        self.rows * self.columns
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[derive(Serialize, Deserialize)]
 pub struct MatrixIndex(pub usize, pub usize);
@@ -312,19 +364,20 @@ impl<T> Matrix<T>
     where T: MatrixElement
 {
     pub fn new(rows: usize, columns: usize) -> Matrix<T> {
-        Matrix {
-            linear_index: MatrixLinearIndex::new_row_stride(
-                MatrixDimensions { rows, columns },
-                columns,
-            ),
-            elements: vec![Default::default(); rows * columns],
-        }
+        Self::new_with_dimension(MatrixDimensions{rows, columns})
     }
 
     pub fn new_with_indexing(linear_index: MatrixLinearIndex) -> Matrix<T> {
         Matrix {
             linear_index: linear_index,
             elements: vec![T::default(); linear_index.required_length()]
+        }
+    }
+
+    pub fn new_with_dimension(dimension: MatrixDimensions) -> Matrix<T> {
+        Matrix {
+            linear_index: MatrixLinearIndex::new_row_stride(dimension),
+            elements: vec![T::default(); dimension.cell_count()]
         }
     }
 
@@ -477,15 +530,13 @@ impl MatrixLinearIndex {
     }
 
     pub const fn new_row_stride(
-        dimensions: MatrixDimensions,
-        row_stride: usize) -> MatrixLinearIndex {
-        MatrixLinearIndex {dimensions, row_stride, col_stride: 1, offset: 0}
+        dimensions: MatrixDimensions) -> MatrixLinearIndex {
+        MatrixLinearIndex {dimensions, row_stride: dimensions.columns, col_stride: 1, offset: 0}
     }
 
     pub const fn new_col_stride(
-        dimensions: MatrixDimensions,
-        col_stride: usize) -> MatrixLinearIndex {
-        MatrixLinearIndex {dimensions, row_stride: 1, col_stride, offset: 0}
+        dimensions: MatrixDimensions) -> MatrixLinearIndex {
+        MatrixLinearIndex {dimensions, row_stride: 1, col_stride: dimensions.rows, offset: 0}
     }
 }
 
