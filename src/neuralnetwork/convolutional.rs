@@ -61,26 +61,7 @@ impl Layer for ConvolutionalLayer {
     }
 
     fn evaluate_input(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl> {
-        // let input_matrix = SliceView::new(self.input_matrix_index, input.as_slice());
-
-        let mut output = Vector::<Ampl>::new(self.get_output_dimension());
-        let kernel_output_indexing = self.get_kernel_output_indexing();
-
-        let input_kernel_indexing = self.input_matrix_index.with_dimensions(self.kernel_dimension);
-
-        for (kernel_index, kernel) in self.kernels.iter().enumerate() {
-            let mut kernel_output_matrix = MutSliceView::new(
-                kernel_output_indexing.add_slice_offset(kernel_index * kernel_output_indexing.linear_dimension_length()),
-                output.as_mut_slice());
-
-            for (index, elm) in kernel_output_matrix.iter_mut_enum() {
-                let input_kernel_view = SliceView::new(
-                    input_kernel_indexing.add_row_col_offset(index.0, index.1),
-                    input.as_slice());
-                *elm = kernel.scalar_prod(&input_kernel_view);
-            }
-        }
-
+        let output = self.evaluate_input_no_sigmoid(input);
         output.apply(sigmoid)
     }
 
@@ -111,6 +92,27 @@ impl ConvolutionalLayer {
             rows: self.input_matrix_index.dimensions.rows - self.kernel_dimension.rows + 1,
             columns: self.input_matrix_index.dimensions.columns - self.kernel_dimension.columns + 1,
         })
+    }
+
+    fn evaluate_input_no_sigmoid(&self, input: &Vector<Ampl>) -> Vector<Ampl> {
+        let mut output = Vector::<Ampl>::new(self.get_output_dimension());
+        let kernel_output_indexing = self.get_kernel_output_indexing();
+
+        let input_kernel_indexing = self.input_matrix_index.with_dimensions(self.kernel_dimension);
+
+        for (kernel_index, kernel) in self.kernels.iter().enumerate() {
+            let mut kernel_output_matrix = MutSliceView::new(
+                kernel_output_indexing.add_slice_offset(kernel_index * kernel_output_indexing.linear_dimension_length()),
+                output.as_mut_slice());
+
+            for (index, elm) in kernel_output_matrix.iter_mut_enum() {
+                let input_kernel_view = SliceView::new(
+                    input_kernel_indexing.add_row_col_offset(index.0, index.1),
+                    input.as_slice());
+                *elm = kernel.scalar_prod(&input_kernel_view);
+            }
+        }
+        output
     }
 }
 
@@ -163,7 +165,7 @@ mod tests {
         *input_matrix.elm_mut(3, 6) = 1.0;
 
         // calculate output
-        let output = layer.evaluate_input(&input, neuralnetwork::sigmoid_logistic);
+        let output = layer.evaluate_input_no_sigmoid(&input);
         let output_indexing = layer.get_kernel_output_indexing();
         let output_matrix1 = SliceView::new(output_indexing, output.as_slice());
         let output_matrix2 = SliceView::new(output_indexing.add_slice_offset(output_indexing.linear_dimension_length()), output.as_slice());
