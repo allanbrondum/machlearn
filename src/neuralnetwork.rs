@@ -3,7 +3,7 @@
 use std::any::Any;
 use std::fmt::{Debug, Display, Formatter};
 use crate::vector::{Vector};
-use crate::matrix::{Matrix, MatrixDimensions, MatrixLinearIndex, MatrixT, SliceView};
+use crate::matrix::{Matrix, MatrixDimensions, MatrixLinearIndex, MatrixT, MutSliceView, SliceView};
 use rand::Rng;
 use rayon::prelude::*;
 use std::time::Instant;
@@ -12,7 +12,7 @@ use std::fs;
 use std::io::Write;
 use std::io::BufRead;
 use std::io::Read;
-use std::ops::Mul;
+use std::ops::{Deref, Mul};
 use rand::rngs::ThreadRng;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
@@ -194,17 +194,19 @@ impl Layer for ConvolutionalLayer {
         let mut output = Vector::<Ampl>::new(self.get_output_dimension());
         let kernel_output_indexing = self.get_kernel_output_indexing();
 
-        // let input_kernel_view = MatrixLinearIndex::
+        let input_kernel_indexing = self.input_matrix_index.with_dimensions(self.kernel_dimension);
 
         for (kernel_index, kernel) in self.kernels.iter().enumerate() {
-            let mut kernel_output_matrix = SliceView::new(
+            let mut kernel_output_matrix = MutSliceView::new(
                 kernel_output_indexing.add_slice_offset(kernel_index * kernel_output_indexing.required_length()),
                 output.as_mut_slice());
 
             for (index, elm) in kernel_output_matrix.iter_mut_enum() {
-
+                let input_kernel_view = SliceView::new(
+                    input_kernel_indexing.add_row_col_offset(index.0, index.1),
+                    input.as_slice());
+                *elm = kernel.scalar_prod(&input_kernel_view);
             }
-
         }
 
         output.apply(sigmoid)

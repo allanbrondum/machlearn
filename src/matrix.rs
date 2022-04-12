@@ -286,20 +286,20 @@ impl<'a, T> MatrixT<'a, T> for Matrix<T>
     }
 
     fn elm(&self, row: usize, col:usize) -> &T {
-        &self.elements[self.linear_index.lin_index(row, col)]
+        &self.elements[self.linear_index.linear_index(row, col)]
     }
 
     fn elm_mut(&mut self, row: usize, col:usize) -> &mut T {
-        &mut self.elements[self.linear_index.lin_index(row, col)]
+        &mut self.elements[self.linear_index.linear_index(row, col)]
     }
 
     fn row_iter(&'a self, row: usize) -> Self::RowIter {
-        let offset = self.linear_index.lin_index(row, 0);
+        let offset = self.linear_index.linear_index(row, 0);
         StrideIter::new(self.elements.as_slice(), offset, self.linear_index.col_stride, self.linear_index.dimensions.columns)
     }
 
     fn col_iter(&'a self, col: usize) -> Self::ColIter {
-        let offset = self.linear_index.lin_index(0, col);
+        let offset = self.linear_index.linear_index(0, col);
         StrideIter::new(self.elements.as_slice(), offset, self.linear_index.row_stride, self.linear_index.dimensions.rows)
     }
 
@@ -515,9 +515,13 @@ pub struct MatrixLinearIndex {
 }
 
 impl MatrixLinearIndex {
-    pub fn lin_index(&self, row: usize, col:usize) -> usize {
+    pub fn linear_index(&self, row: usize, col:usize) -> usize {
         assert!(row < self.dimensions.rows, "Row index {} out of bounds for number of rows {}", row, self.dimensions.rows);
         assert!(col < self.dimensions.columns, "Column index {} out of bounds for number of columns {}", col, self.dimensions.columns);
+        self.linear_index_internal(row, col)
+    }
+
+    fn linear_index_internal(&self, row: usize, col: usize) -> usize {
         row * self.row_stride + col * self.col_stride + self.offset
     }
 
@@ -535,7 +539,7 @@ impl MatrixLinearIndex {
     }
 
     pub fn add_row_col_offset(self, row_delta: usize, col_delta: usize) -> MatrixLinearIndex {
-        MatrixLinearIndex {offset: self.lin_index(row_delta, col_delta), ..self}
+        MatrixLinearIndex {offset: self.linear_index_internal(row_delta, col_delta), ..self}
     }
 
     pub fn with_dimensions(self, new_dimensions: MatrixDimensions) -> MatrixLinearIndex {

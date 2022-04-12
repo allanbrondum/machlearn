@@ -24,7 +24,7 @@ impl<'a, T: MatrixElement> MutSliceView<'a, T> {
     }
 
     pub fn new(linear_index: MatrixLinearIndex, inner: &'a mut [T]) -> MutSliceView<'a, T> {
-        assert_eq!(linear_index.required_length(), inner.len());
+        assert!(linear_index.required_length() <= inner.len());
         MutSliceView {linear_index, inner}
     }
 }
@@ -38,21 +38,21 @@ impl<'a, T: MatrixElement> MatrixT<'a, T> for MutSliceView<'a, T> {
     }
 
     fn elm(&self, row: usize, col:usize) -> &T {
-        &self.inner[self.linear_index.lin_index(row, col)]
+        &self.inner[self.linear_index.linear_index(row, col)]
     }
 
     fn elm_mut(&mut self, row: usize, col:usize) -> &mut T {
-        let index = self.linear_index.lin_index(row, col);
+        let index = self.linear_index.linear_index(row, col);
         &mut self.inner[index]
     }
 
     fn row_iter(&'a self, row: usize) -> Self::RowIter {
-        let offset = self.linear_index.lin_index(row, 0);
+        let offset = self.linear_index.linear_index(row, 0);
         StrideIter::new(self.inner, offset, self.linear_index.col_stride, self.linear_index.dimensions.columns)
     }
 
     fn col_iter(&'a self, col: usize) -> Self::ColIter {
-        let offset = self.linear_index.lin_index(0, col);
+        let offset = self.linear_index.linear_index(0, col);
         StrideIter::new(self.inner, offset, self.linear_index.row_stride, self.linear_index.dimensions.rows)
     }
 
@@ -94,7 +94,7 @@ impl<'a, T: MatrixElement> MatrixT<'a, T> for SliceView<'a, T> {
     }
 
     fn elm(&self, row: usize, col:usize) -> &T {
-        &self.inner[self.linear_index.lin_index(row, col)]
+        &self.inner[self.linear_index.linear_index(row, col)]
     }
 
     fn elm_mut(&mut self, row: usize, col:usize) -> &mut T {
@@ -102,12 +102,12 @@ impl<'a, T: MatrixElement> MatrixT<'a, T> for SliceView<'a, T> {
     }
 
     fn row_iter(&'a self, row: usize) -> Self::RowIter {
-        let offset = self.linear_index.lin_index(row, 0);
+        let offset = self.linear_index.linear_index(row, 0);
         StrideIter::new(self.inner, offset, self.linear_index.col_stride, self.linear_index.dimensions.columns)
     }
 
     fn col_iter(&'a self, col: usize) -> Self::ColIter {
-        let offset = self.linear_index.lin_index(0, col);
+        let offset = self.linear_index.linear_index(0, col);
         StrideIter::new(self.inner, offset, self.linear_index.row_stride, self.linear_index.dimensions.rows)
     }
 

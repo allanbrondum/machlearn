@@ -2,7 +2,7 @@
 
 use std::fmt::{Display, Formatter};
 use serde::{Serialize, Deserialize};
-use std::ops::{Index, IndexMut, Deref};
+use std::ops::{Index, IndexMut, Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::matrix::{Matrix, MatrixDimensions, MatrixElement, MatrixLinearIndex, MatrixT, MutSliceView};
@@ -87,6 +87,7 @@ impl<T> Vector<T>
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.elements.as_mut_slice()
     }
+
 }
 
 impl<T> Deref for Vector<T>
@@ -96,6 +97,14 @@ impl<T> Deref for Vector<T>
 
     fn deref(&self) -> &Self::Target {
         self.elements.deref()
+    }
+}
+
+impl<T> DerefMut for Vector<T>
+    where T: MatrixElement
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.elements.deref_mut()
     }
 }
 

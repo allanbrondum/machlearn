@@ -301,7 +301,20 @@ fn linear_index_offset() {
     let view_vec: Vec<_> = view.iter().copied().collect();
     assert_eq!(vec!(8, 9, 10, 13, 14, 15), view_vec);
 
+    let indexing0 = MatrixLinearIndex::new_row_stride(MatrixDimensions::new(3, 5))
+        .with_dimensions(MatrixDimensions::new(2, 2));
+    let view = SliceView::new(
+        indexing0,
+        &vec);
+    let view_vec: Vec<_> = view.iter().copied().collect();
+    assert_eq!(vec!(1, 2, 6, 7), view_vec);
 
+    let indexing = indexing0.add_row_col_offset(1, 3);
+    let view = SliceView::new(
+        indexing,
+        &vec);
+    let view_vec: Vec<_> = view.iter().copied().collect();
+    assert_eq!(vec!(9, 10, 14, 15), view_vec);
 }
 
 
