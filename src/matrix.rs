@@ -255,9 +255,10 @@ impl<'a, T: MatrixElement + 'a, M: MatrixT<'a, T>> Iterator for AllElementsEnume
             self.current_row += 1;
         }
 
-        // https://stackoverflow.com/questions/63437935/in-rust-how-do-i-create-a-mutable-iterator
         let element_pointer: *mut T = self.inner.elm_mut(matrix_index.0, matrix_index.1);
         unsafe {
+            // If we only hand out at most one reference to each element during the lifetime of the iterator
+            // then the code should be safe. Seems like this the idiomatic way to implement mutable iterators (// https://stackoverflow.com/questions/63437935/in-rust-how-do-i-create-a-mutable-iterator)
             Some((matrix_index, &mut *element_pointer))
         }
     }
@@ -347,6 +348,10 @@ pub struct MatrixDimensions {
 impl MatrixDimensions {
     pub fn cell_count(&self) -> usize {
         self.rows * self.columns
+    }
+
+    pub fn new(rows: usize, columns: usize) -> MatrixDimensions {
+        MatrixDimensions{rows, columns}
     }
 }
 
@@ -525,8 +530,16 @@ impl MatrixLinearIndex {
             row_stride: self.col_stride, col_stride: self.row_stride}
     }
 
-    pub fn add_offset(self, offset_delta: usize) -> MatrixLinearIndex {
+    pub fn add_slice_offset(self, offset_delta: usize) -> MatrixLinearIndex {
         MatrixLinearIndex {offset: self.offset + offset_delta, ..self}
+    }
+
+    pub fn add_row_col_offset(self, row_delta: usize, col_delta: usize) -> MatrixLinearIndex {
+        MatrixLinearIndex {offset: self.lin_index(row_delta, col_delta), ..self}
+    }
+
+    pub fn with_dimensions(self, new_dimensions: MatrixDimensions) -> MatrixLinearIndex {
+        MatrixLinearIndex {dimensions: new_dimensions, ..self}
     }
 
     pub const fn new_row_stride(

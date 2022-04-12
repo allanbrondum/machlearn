@@ -266,6 +266,46 @@ fn matrix_slice_view_with_col_stride() {
 }
 
 #[test]
+fn linear_index_offset() {
+    let vec = vec!(
+        1, 2, 3, 4, 5,
+        6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15);
+
+    let indexing0 = MatrixLinearIndex::new_row_stride(MatrixDimensions::new(3, 5))
+        .with_dimensions(MatrixDimensions::new(2, 3));
+    let view = SliceView::new(
+        indexing0,
+        &vec);
+    let view_vec: Vec<_> = view.iter().copied().collect();
+    assert_eq!(vec!(1, 2, 3, 6, 7, 8), view_vec);
+
+    let indexing = indexing0.add_row_col_offset(0, 1);
+    let view = SliceView::new(
+        indexing,
+        &vec);
+    let view_vec: Vec<_> = view.iter().copied().collect();
+    assert_eq!(vec!(2, 3, 4, 7, 8, 9), view_vec);
+
+    let indexing = indexing.add_row_col_offset(1, 1);
+    let view = SliceView::new(
+        indexing,
+        &vec);
+    let view_vec: Vec<_> = view.iter().copied().collect();
+    assert_eq!(vec!(8, 9, 10, 13, 14, 15), view_vec);
+
+    let indexing = indexing0.add_row_col_offset(1, 2);
+    let view = SliceView::new(
+        indexing,
+        &vec);
+    let view_vec: Vec<_> = view.iter().copied().collect();
+    assert_eq!(vec!(8, 9, 10, 13, 14, 15), view_vec);
+
+
+}
+
+
+#[test]
 fn matrix_slice_view_with_row_stride() {
     let vec = vec!(1.1, 3.1, 2.1, 0.0, 0.0, 4.1);
     let a = SliceView::new_row_stride(

@@ -90,7 +90,7 @@ pub fn print_data_examples(symbols: usize) {
 fn print_samples(symbols: usize, label_bytes: &mut impl Iterator<Item=Sample>) {
     let mut output_indexes = Vec::new();
     for i in 0..symbols {
-        output_indexes.push(OUTPUT_INDEX.add_offset(i * IMAGE_PIXEL_COUNT));
+        output_indexes.push(OUTPUT_INDEX.add_slice_offset(i * IMAGE_PIXEL_COUNT));
     }
     imagedatasets::print_samples(label_bytes, INPUT_INDEX, &output_indexes);
 }

@@ -25,22 +25,32 @@ mod tests;
 /// Sample tuple, .0: input, .1: output
 pub struct Sample(pub Vector<Ampl>, pub Vector<Ampl>);
 
+/// Feed forward neural network layer.
 pub trait Layer : Display + Debug + Sync {
     fn get_weights(&self) -> Vec<&Matrix<Ampl>>;
 
     fn set_weights(&mut self, new_weights: Vec<Matrix<Ampl>>);
 
+    /// Dimension of input state vector.
     fn get_input_dimension(&self) -> usize;
 
+    /// Dimension of output state vector.
     fn get_output_dimension(&self) -> usize;
 
     fn set_random_weights(&mut self);
 
     fn set_random_weights_seed(&mut self, seed: u64);
 
+    /// Evaluates the given input and returns the output of the layer
     fn evaluate_input(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl>;
 
-    fn backpropagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl>;
+    /// Use highest gradient back propagation to adjust weights moderated by the factor `ny`.
+    /// The vector `gamma_output` is the partial
+    /// derivatives of error squared evaluated at the given `input` with respect to the output state coordinates
+    /// (the dimension of `gamma_output` is thus [`get_output_dimension`]). The method should return
+    /// the partial derivatives of the error squared evaluated at the given `input` with respect to the input
+    /// state coordinates (the dimension of the returned vector is thus [`get_input_dimension`]).
+    fn back_propagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl>;
 
     fn as_any(&self) -> &dyn Any;
 }
@@ -101,8 +111,11 @@ impl Layer for FullyConnectedLayer {
         self.weights.mul_vector(input).apply(sigmoid)
     }
 
-    fn backpropagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl> {
+    fn back_propagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl> {
+        // the delta vector is the partial derivative of error squared with respect to the layer output before the sigmoid function is applied
         let delta_output = self.weights.mul_vector(input).apply(sigmoid_derived).mul_comp(gamma_output);
+
+        // calculate the return value: partial derivative of error squared with respect to input state coordinates
         let gamma_input = self.weights.mul_vector_lhs(&delta_output);
 
         // adjust weights
@@ -181,23 +194,23 @@ impl Layer for ConvolutionalLayer {
         let mut output = Vector::<Ampl>::new(self.get_output_dimension());
         let kernel_output_indexing = self.get_kernel_output_indexing();
 
+        // let input_kernel_view = MatrixLinearIndex::
+
         for (kernel_index, kernel) in self.kernels.iter().enumerate() {
-            let kernel_output_matrix = SliceView::new(
-                kernel_output_indexing.add_offset(kernel_index * kernel_output_indexing.required_length()),
+            let mut kernel_output_matrix = SliceView::new(
+                kernel_output_indexing.add_slice_offset(kernel_index * kernel_output_indexing.required_length()),
                 output.as_mut_slice());
 
-            // kernel_output_matrix.iter_enum()
+            for (index, elm) in kernel_output_matrix.iter_mut_enum() {
+
+            }
 
         }
 
-        // if input.len() != self.get_input_dimension() {
-        //     panic!("Input state length {} not equals to weights column count {}", input.len(), self.weights.dimensions().columns);
-        // }
-        // self.weights.mul_vector(input).apply(sigmoid)
-        output
+        output.apply(sigmoid)
     }
 
-    fn backpropagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl> {
+    fn back_propagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl> {
         // let delta_output = self.weights.mul_vector(input).apply(sigmoid_derived).mul_comp(gamma_output);
         // let gamma_input = self.weights.mul_vector_lhs(&delta_output);
         //
@@ -329,7 +342,7 @@ impl Network {
             let layer = layer_input.0;
             let input = layer_input.1;
 
-            gamma = layer.backpropagate(input, &gamma, self.sigmoid_derived, ny);
+            gamma = layer.back_propagate(input, &gamma, self.sigmoid_derived, ny);
         }
 
     }
