@@ -35,7 +35,7 @@ pub fn print_matrix_max<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) {
 }
 
 pub fn print_matrix<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) {
-    let min = matrix.iter().copied().min_by(cmp_ampl_ref).unwrap();
+    let min = matrix.iter().copied().min_by(cmp_ampl_ref).unwrap().min(0.0);
     let max = matrix.iter().copied().max_by(cmp_ampl_ref).unwrap();
     let line: String = std::iter::from_fn(|| Some('-')).take(matrix.column_count() + 2).collect();
     println!("{}", line);

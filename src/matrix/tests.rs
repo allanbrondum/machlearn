@@ -539,6 +539,25 @@ fn all_elements_enumerated_mut_iter() {
 }
 
 #[test]
+fn copy_to_matrix() {
+    let mut m = Matrix::new(3, 2);
+    m[(0, 0)] = 1;
+    m[(0, 1)] = 2;
+    m[(1, 0)] = 3;
+    m[(1, 1)] = 4;
+
+    let m = m.copy_to_matrix();
+    let vecres: Vec<_> = m.iter().copied().collect();
+    assert_eq!(vec!(1, 2, 3, 4, 0, 0), vecres);
+
+    let m = SliceView::new_row_stride(3, 2, vecres.as_slice());
+    let m = m.copy_to_matrix();
+    let vecres: Vec<_> = m.iter().copied().collect();
+    assert_eq!(vec!(1, 2, 3, 4, 0, 0), vecres);
+
+}
+
+#[test]
 fn col_iter() {
     let mut a = Matrix::new( 3, 2);
     a[(0,0)] = 1.1;

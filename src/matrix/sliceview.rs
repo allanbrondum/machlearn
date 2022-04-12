@@ -24,7 +24,7 @@ impl<'a, T: MatrixElement> MutSliceView<'a, T> {
     }
 
     pub fn new(linear_index: MatrixLinearIndex, inner: &'a mut [T]) -> MutSliceView<'a, T> {
-        assert!(linear_index.required_length() <= inner.len());
+        assert!(linear_index.required_linear_array_length() <= inner.len());
         MutSliceView {linear_index, inner}
     }
 }
@@ -80,7 +80,7 @@ impl<'a, T: MatrixElement> SliceView<'a, T> {
     }
 
     pub fn new(linear_index: MatrixLinearIndex, inner: &'a [T]) -> SliceView<'a, T> {
-        assert!(linear_index.required_length() <= inner.len());
+        assert!(linear_index.required_linear_array_length() <= inner.len());
         SliceView {linear_index, inner}
     }
 }

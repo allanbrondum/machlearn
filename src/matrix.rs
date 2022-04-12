@@ -151,6 +151,14 @@ pub trait MatrixT<'a, T: MatrixElement> {
     {
         TransposedMatrixView::new(self)
     }
+
+    fn copy_to_matrix(&'a self) -> Matrix<T> where Self: Sized {
+        let mut matrix = Matrix::new_with_dimension(self.dimensions());
+        for (index, elm) in self.iter_enum() {
+            matrix[(index.0, index.1)] = *elm;
+        }
+        matrix
+    }
 }
 
 pub struct AllElementsIter<'a, T: MatrixElement, M: MatrixT<'a, T>> {
@@ -375,7 +383,7 @@ impl<T> Matrix<T>
     pub fn new_with_indexing(linear_index: MatrixLinearIndex) -> Matrix<T> {
         Matrix {
             linear_index: linear_index,
-            elements: vec![T::default(); linear_index.required_length()]
+            elements: vec![T::default(); linear_index.required_linear_array_length()]
         }
     }
 
@@ -387,7 +395,7 @@ impl<T> Matrix<T>
     }
 
     pub fn new_from_elements(linear_index:  MatrixLinearIndex, elements: Vec<T>) -> Matrix<T> {
-        assert!(linear_index.required_length() <= elements.len(), "Required length {}, elements length {}", linear_index.required_length(), elements.len());
+        assert!(linear_index.required_linear_array_length() <= elements.len(), "Required length {}, elements length {}", linear_index.required_linear_array_length(), elements.len());
         Matrix {
             linear_index: linear_index,
             elements,
@@ -525,8 +533,14 @@ impl MatrixLinearIndex {
         row * self.row_stride + col * self.col_stride + self.offset
     }
 
-    pub fn required_length(&self) -> usize {
-        (self.dimensions.rows - 1) * self.row_stride + (self.dimensions.columns - 1) * self.col_stride + self.offset + 1
+    /// Linear dimension length plus offset
+    pub fn required_linear_array_length(&self) -> usize {
+        self.linear_dimension_length() + self.offset
+    }
+
+    /// Linear dimension length
+    pub fn linear_dimension_length(&self) -> usize {
+        (self.dimensions.rows - 1) * self.row_stride + (self.dimensions.columns - 1) * self.col_stride + 1
     }
 
     pub fn transpose(self) -> MatrixLinearIndex {
