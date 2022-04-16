@@ -13,7 +13,7 @@ use machlearn::neuralnetwork::Network;
 use machlearn::vector::Vector;
 
 fn main() {
-    let mut network = Network::new_logistic_sigmoid_biases(vec!(3, 3, 2));
+    let mut network = Network::new_fully_connected_biases(vec!(3, 3, 2));
     network.set_random_weights_seed(0);
 
     // let mut rng = rand::rngs::thread_rng();
@@ -36,7 +36,7 @@ fn main() {
 
     let start = Instant::now();
 
-    neuralnetwork::run_learning_iterations(&mut network, learning_samples, 0.5);
+    neuralnetwork::run_learning_iterations(&mut network, learning_samples, 0.5, false);
     // let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
     let errsqr = neuralnetwork::run_test_iterations_parallel(&network, test_samples.par_bridge());
 

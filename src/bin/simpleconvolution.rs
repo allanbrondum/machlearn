@@ -12,7 +12,7 @@ use itertools::{Chunk, Itertools};
 use rand::Rng;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use machlearn::neuralnetwork::{Ampl, FullyConnectedLayer, Layer, Sample};
+use machlearn::neuralnetwork::{ActivationFunction, Ampl, ConvolutionalLayer, FullyConnectedLayer, Layer, LayerContainer, Sample};
 use machlearn::neuralnetwork;
 use machlearn::vector::Vector;
 use machlearn::matrix::{Matrix, MatrixT, MutSliceView};
@@ -21,37 +21,39 @@ use std::str::FromStr;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
 use machlearn::datasets::{convolutiontest, imagedatasets};
+use machlearn::datasets::convolutiontest::KERNEL_INDEX;
 use machlearn::neuralnetwork::Network;
 
 const SYMBOLS: usize = 2;
+const NY: Ampl = 0.03;
 
 fn main() {
-    let mut network = Network::new_logistic_sigmoid(vec!(convolutiontest::IMAGE_PIXEL_COUNT, 10)); // single layer
+    let layer = ConvolutionalLayer::new(convolutiontest::INPUT_INDEX, KERNEL_INDEX.dimensions, SYMBOLS);
+    let mut network = Network::new(
+        vec!(LayerContainer::new(Box::new(layer), ActivationFunction::sigmoid())),
+        false);
     convolutiontest::print_data_examples(SYMBOLS);
+
+    network.set_random_weights_seed(1);
+
+    const LEARNING_SAMPLES: usize = 1_000;
+    // neuralnetwork::run_learning_iterations(&mut network, convolutiontest::get_learning_samples(SYMBOLS).take(LEARNING_SAMPLES), NY, false);
+
     if true {
-        return;
-    }
-
-    network.set_random_weights_seed(0);
-
-    const LEARNING_SAMPLES: usize = 10_000;
-    neuralnetwork::run_learning_iterations(&mut network, convolutiontest::get_learning_samples(SYMBOLS).take(LEARNING_SAMPLES), 0.3);
-
-    if false {
-        neuralnetwork::run_and_print_learning_iterations(&mut network, convolutiontest::get_learning_samples(SYMBOLS).take(20), 0.3);
+        neuralnetwork::run_learning_iterations(&mut network, convolutiontest::get_learning_samples(SYMBOLS).take(20), NY, true);
     }
 
     const TEST_SAMPLES: usize = 1000;
     // let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
     let errsqr = neuralnetwork::run_test_iterations_parallel(&network, convolutiontest::get_test_samples(SYMBOLS).take(TEST_SAMPLES).par_bridge());
 
-    convolutiontest::test_correct_percentage(&network, convolutiontest::get_test_samples(SYMBOLS).take(20).par_bridge(), true);
-    let pct_correct = convolutiontest::test_correct_percentage(&network, convolutiontest::get_test_samples(SYMBOLS).take(TEST_SAMPLES).par_bridge(), false);
+    convolutiontest::test_correct_percentage(SYMBOLS, &network, convolutiontest::get_test_samples(SYMBOLS).take(20), true);
+    let pct_correct = convolutiontest::test_correct_percentage(SYMBOLS, &network, convolutiontest::get_test_samples(SYMBOLS).take(TEST_SAMPLES), false);
 
     println!("error squared: {:.5}", errsqr);
     println!("% correct: {:.2}", pct_correct);
 
-    if false { // print kernels
+    if true { // print kernels
         let weights = &network.get_all_weights()[0];
         for (i, &kernel) in weights.iter().enumerate() {
             println!("kernel {}:\n", i);

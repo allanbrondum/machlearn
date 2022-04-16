@@ -9,7 +9,7 @@ use machlearn::{neuralnetwork};
 use machlearn::neuralnetwork::Network;
 
 fn main() {
-    let mut network = Network::new_logistic_sigmoid(vec!(8, 1));
+    let mut network = Network::new_fully_connected(vec!(8, 1));
     network.set_random_weights();
 
     let mut rng = rand::thread_rng();
@@ -44,7 +44,7 @@ fn main() {
     let learning_samples = samples.clone().take(100000);
     let test_samples = samples.clone().take(1000);
 
-    neuralnetwork::run_learning_iterations(&mut network, learning_samples, 0.5);
+    neuralnetwork::run_learning_iterations(&mut network, learning_samples, 0.5, false);
     let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
 
     println!("error squared: {}", errsqr);

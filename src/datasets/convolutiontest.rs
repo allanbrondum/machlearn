@@ -19,7 +19,8 @@ pub const IMAGE_PIXEL_COUNT: usize = IMAGE_WIDTH_HEIGHT * IMAGE_WIDTH_HEIGHT;
 pub type ImageArray = [u8; IMAGE_PIXEL_COUNT];
 
 pub const INPUT_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows:IMAGE_WIDTH_HEIGHT, columns:IMAGE_WIDTH_HEIGHT});
-pub const OUTPUT_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows:IMAGE_WIDTH_HEIGHT, columns:IMAGE_WIDTH_HEIGHT});
+pub const KERNEL_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(MatrixDimensions::new(5, 5));
+pub const OUTPUT_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows: INPUT_INDEX.dimensions.rows - KERNEL_INDEX.dimensions.rows + 1, columns: INPUT_INDEX.dimensions.columns - KERNEL_INDEX.dimensions.columns + 1});
 
 const CROSS_PATTERN: &[(i32, i32)] = &[(0,0), (1,1), (2,2), (-1,-1), (-2,-2), (-1,1), (-2,2), (1,-1), (2,-2)];
 const SQUARE_PATTERN: &[(i32, i32)] = &[(0,2), (1,2), (2,2), (2,1), (2,0), (2,-1), (2,-2), (1,-2), (0,-2), (-1,-2), (-2,-2), (-2,-1), (-2,0), (-2,1), (-2,2), (-1,2)];
@@ -46,8 +47,9 @@ fn get_samples(symbols: usize, mut rng: impl Rng) -> impl Iterator<Item=Sample> 
             set_pattern(&mut input_image, (x, y), SYMBOLS[i]);
 
             let mut output_image = Matrix::new_with_indexing(OUTPUT_INDEX);
-            let matrix_index = x_y_to_row_col(&output_image, (x, y)).unwrap();
-            output_image[matrix_index] = 1.0;
+            if let Some(matrix_index) = x_y_to_row_col(&output_image, (x - (KERNEL_INDEX.dimensions.columns / 2) as i32, y - (KERNEL_INDEX.dimensions.rows / 2) as i32)) {
+                output_image[matrix_index] = 1.0;
+            }
             output_vec.append(&mut output_image.into_elements());
         }
 
@@ -88,13 +90,20 @@ pub fn print_data_examples(symbols: usize) {
 }
 
 fn print_samples(symbols: usize, label_bytes: &mut impl Iterator<Item=Sample>) {
-    let mut output_indexes = Vec::new();
-    for i in 0..symbols {
-        output_indexes.push(OUTPUT_INDEX.add_slice_offset(i * IMAGE_PIXEL_COUNT));
-    }
+    let output_indexes = get_output_indexings(symbols);
     imagedatasets::print_samples(label_bytes, INPUT_INDEX, &output_indexes);
 }
 
-pub fn test_correct_percentage(network: &Network, test_samples: impl ParallelIterator<Item=Sample>, print: bool) -> f64 {
-    imagedatasets::test_correct_percentage(network, test_samples, OUTPUT_INDEX, print)
+fn get_output_indexings(symbols: usize) -> Vec<MatrixLinearIndex> {
+    let mut output_indexes = Vec::new();
+    for i in 0..symbols {
+        output_indexes.push(OUTPUT_INDEX.add_slice_offset(i * OUTPUT_INDEX.linear_dimension_length()));
+    }
+    output_indexes
+}
+
+pub fn test_correct_percentage(symbols: usize, network: &Network, test_samples: impl Iterator<Item=Sample> + Send, print: bool) -> f64 {
+    let output_indexes = get_output_indexings(symbols);
+    imagedatasets::test_correct_percentage(network, test_samples, &output_indexes, print)
+
 }

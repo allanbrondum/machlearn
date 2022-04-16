@@ -418,6 +418,28 @@ fn add_assign() {
     assert_eq!(3.1 + 30., a[(0,1)]);
     assert_eq!(4.1 + 40., a[(2,1)]);
     assert_eq!(0., a[(1,1)]);
+}
+
+#[test]
+fn add_matrix_assign() {
+    let mut a = Matrix::new( 3, 2);
+    a[(0,0)] = 1.1;
+    a[(1,0)] = 2.1;
+    a[(0,1)] = 3.1;
+    a[(2,1)] = 4.1;
+    let mut b = Matrix::new( 3, 2);
+    b[(0,0)] = 10.;
+    b[(1,0)] = 20.;
+    b[(0,1)] = 30.;
+    b[(2,1)] = 40.;
+
+    a.add_matrix_assign(&b);
+
+    assert_eq!(1.1 + 10., a[(0,0)]);
+    assert_eq!(2.1 + 20., a[(1,0)]);
+    assert_eq!(3.1 + 30., a[(0,1)]);
+    assert_eq!(4.1 + 40., a[(2,1)]);
+    assert_eq!(0., a[(1,1)]);
 
 }
 
@@ -909,6 +931,26 @@ fn multiply_scalar2() {
 
     assert_eq!(result, 2. * a);
 }
+
+#[test]
+fn multiply_scalar_assign() {
+    let mut a = Matrix::new( 3, 4);
+    a[(0,0)] = 1;
+    a[(0,1)] = 2;
+    a[(1,0)] = 3;
+    a[(1,1)] = 4;
+
+    let mut result = Matrix::new( 3, 4);
+    result[(0,0)] = 2;
+    result[(0,1)] = 4;
+    result[(1,0)] = 6;
+    result[(1,1)] = 8;
+
+    a.mul_scalar_assign(2);
+
+    assert_eq!(result, a);
+}
+
 
 #[test]
 fn scalar_product() {

@@ -1,6 +1,6 @@
 //! Matrix type and arithmetic operations on the Matrix.
 
-use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul};
+use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAssign};
 use std::fmt::{Display, Formatter};
 use serde::{Serialize, Deserialize};
 use std::iter::{Map, Sum};
@@ -21,6 +21,7 @@ PartialEq +
 AddAssign +
 Add<Output=Self> +
 Mul<Output=Self> +
+MulAssign +
 Default +
 Display +
 Neg<Output=Self> +
@@ -143,6 +144,23 @@ pub trait MatrixT<'a, T: MatrixElement> {
                 .sum();
         }
         result
+    }
+
+    /// Add given matrix to the matrix (component wise addition).
+    fn add_matrix_assign(&'a mut self, rhs: &'a impl MatrixT<'a, T>) where Self: Sized {
+        if rhs.dimensions() != self.dimensions() {
+            panic!("Cannot add matrix {} to matrix {} because of dimensions", rhs.dimensions(), self.dimensions());
+        }
+        for (index, elm) in self.iter_mut_enum() {
+            *elm += *rhs.elm(index.0, index.1)
+        }
+    }
+
+    /// Add given matrix to the matrix (component wise addition).
+    fn mul_scalar_assign(&'a mut self, scalar: T) where Self: Sized {
+        for (_, elm) in self.iter_mut_enum() {
+            *elm *= scalar
+        }
     }
 
     /// Transposed view of matrix
@@ -358,7 +376,7 @@ impl MatrixDimensions {
         self.rows * self.columns
     }
 
-    pub fn new(rows: usize, columns: usize) -> MatrixDimensions {
+    pub const fn new(rows: usize, columns: usize) -> MatrixDimensions {
         MatrixDimensions{rows, columns}
     }
 }

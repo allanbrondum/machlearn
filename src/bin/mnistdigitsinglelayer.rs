@@ -12,7 +12,7 @@ use itertools::{Chunk, Itertools};
 use rand::Rng;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use machlearn::neuralnetwork::{Ampl, FullyConnectedLayer, Layer, Sample};
+use machlearn::neuralnetwork::{ActivationFunction, Ampl, FullyConnectedLayer, Layer, LayerContainer, Sample};
 use machlearn::neuralnetwork;
 use machlearn::vector::Vector;
 use machlearn::matrix::{Matrix, MatrixT, MutSliceView};
@@ -24,31 +24,42 @@ use machlearn::datasets::{imagedatasets, mnistdigits};
 use machlearn::neuralnetwork::Network;
 
 fn main() {
-    let mut network = Network::new_logistic_sigmoid(vec!(mnistdigits::IMAGE_PIXEL_COUNT, 10)); // single layer
-    mnistdigits::print_data_examples();
+
+    let layer = FullyConnectedLayer::new(mnistdigits::IMAGE_PIXEL_COUNT, 10);
+    let mut network = Network::new(
+        vec!(LayerContainer::new(Box::new(layer), ActivationFunction::sigmoid())),
+        false);
+
+    if false {
+        mnistdigits::print_data_examples();
+    }
+
+    const NY: Ampl = 0.1;
 
     let read_from_file = false;
     if !read_from_file {
+        // learn weights
         network.set_random_weights_seed(0);
 
-        const LEARNING_SAMPLES: usize = 10_000;
-        neuralnetwork::run_learning_iterations(&mut network, mnistdigits::get_learning_samples().take(LEARNING_SAMPLES), 0.3);
+        const LEARNING_SAMPLES: usize = 50_000;
+        neuralnetwork::run_learning_iterations(&mut network, mnistdigits::get_learning_samples().take(LEARNING_SAMPLES), NY, false);
     } else {
+        // read weights from file
         neuralnetwork::read_network_from_file(&mut network, "mnist_twolayer_weights.json");
         // read_network_from_file(&mut network, "mnist_singlelayer_weights.json");
         // println!("network \n{}", network);
     }
 
     if false {
-        neuralnetwork::run_and_print_learning_iterations(&mut network, mnistdigits::get_learning_samples().take(20), 0.3);
+        neuralnetwork::run_learning_iterations(&mut network, mnistdigits::get_learning_samples().take(20), NY, true);
     }
 
     const TEST_SAMPLES: usize = 1000;
     // let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
     let errsqr = neuralnetwork::run_test_iterations_parallel(&network, mnistdigits::get_test_samples().take(TEST_SAMPLES).par_bridge());
 
-    mnistdigits::test_correct_percentage(&network, mnistdigits::get_test_samples().take(20).par_bridge(), true);
-    let pct_correct = mnistdigits::test_correct_percentage(&network, mnistdigits::get_test_samples().take(TEST_SAMPLES).par_bridge(), false);
+    mnistdigits::test_correct_percentage(&network, mnistdigits::get_test_samples().take(10), true);
+    let pct_correct = mnistdigits::test_correct_percentage(&network, mnistdigits::get_test_samples().take(TEST_SAMPLES), false);
 
     println!("error squared: {:.5}", errsqr);
     println!("% correct: {:.2}", pct_correct);

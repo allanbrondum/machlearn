@@ -6,7 +6,7 @@ use std::io::{BufReader, Read};
 use std::fs::File;
 use std::iter::Take;
 use itertools::Itertools;
-use rayon::iter::{IterBridge, ParallelIterator};
+use rayon::iter::{IterBridge, ParallelBridge, ParallelIterator};
 use crate::datasets::imagedatasets;
 use crate::matrix::{MatrixDimensions, MatrixLinearIndex, MatrixT, MutSliceView};
 use crate::neuralnetwork::Network;
@@ -81,6 +81,6 @@ fn get_data_sets(label_file_path: &str, image_file_path: &str) -> impl Iterator<
 }
 
 
-pub fn test_correct_percentage(network: &Network, test_samples: impl ParallelIterator<Item=Sample>, print: bool) -> f64 {
-    imagedatasets::test_correct_percentage(network, test_samples, OUTPUT_INDEX, print)
+pub fn test_correct_percentage(network: &Network, test_samples: impl Iterator<Item=Sample> + Send, print: bool) -> f64 {
+    imagedatasets::test_correct_percentage(network, test_samples, &vec!(OUTPUT_INDEX), print)
 }

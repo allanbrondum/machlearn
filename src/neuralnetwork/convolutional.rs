@@ -47,7 +47,7 @@ impl Layer for ConvolutionalLayer {
     }
 
     fn get_output_dimension(&self) -> usize {
-        self.get_kernel_output_indexing().linear_dimension_length() * self.kernels.len()
+        self.get_single_kernel_output_indexing().linear_dimension_length() * self.kernels.len()
     }
 
     fn set_random_weights(&mut self) {
@@ -60,49 +60,15 @@ impl Layer for ConvolutionalLayer {
         self.set_random_weights_impl(rng);
     }
 
-    fn evaluate_input(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl> {
-        let output = self.evaluate_input_no_sigmoid(input);
-        output.apply(sigmoid)
-    }
-
-    fn back_propagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl> {
-        // let delta_output = self.weights.mul_vector(input).apply(sigmoid_derived).mul_comp(gamma_output);
-        // let gamma_input = self.weights.mul_vector_lhs(&delta_output);
-        //
-        // // adjust weights
-        // self.weights -= ny * delta_output.to_matrix().mul_mat(&input.clone().to_matrix().transpose());
-        //
-        // gamma_input
-
-        Vector::new(0)
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-impl ConvolutionalLayer {
-    fn set_random_weights_impl<R: Rng>(&mut self, mut rng: R) {
-        self.kernels.iter_mut().for_each(|kern| kern.apply_ref(|_| rng.gen_range(-1.0..1.0)));
-    }
-
-    fn get_kernel_output_indexing(&self) -> MatrixLinearIndex {
-        MatrixLinearIndex::new_row_stride(MatrixDimensions {
-            rows: self.input_matrix_index.dimensions.rows - self.kernel_dimension.rows + 1,
-            columns: self.input_matrix_index.dimensions.columns - self.kernel_dimension.columns + 1,
-        })
-    }
-
-    fn evaluate_input_no_sigmoid(&self, input: &Vector<Ampl>) -> Vector<Ampl> {
+    fn evaluate_input_without_activation(&self, input: &Vector<Ampl>) -> Vector<Ampl> {
         let mut output = Vector::<Ampl>::new(self.get_output_dimension());
-        let kernel_output_indexing = self.get_kernel_output_indexing();
+        let single_kernel_output_indexing = self.get_single_kernel_output_indexing();
 
         let input_kernel_indexing = self.input_matrix_index.with_dimensions(self.kernel_dimension);
 
         for (kernel_index, kernel) in self.kernels.iter().enumerate() {
             let mut kernel_output_matrix = MutSliceView::new(
-                kernel_output_indexing.add_slice_offset(kernel_index * kernel_output_indexing.linear_dimension_length()),
+                single_kernel_output_indexing.add_slice_offset(kernel_index * single_kernel_output_indexing.linear_dimension_length()),
                 output.as_mut_slice());
 
             for (index, elm) in kernel_output_matrix.iter_mut_enum() {
@@ -113,6 +79,63 @@ impl ConvolutionalLayer {
             }
         }
         output
+    }
+
+
+    fn back_propagate_without_activation(&mut self, input: &Vector<Ampl>, delta_output: Vector<Ampl>, ny: Ampl) -> Vector<Ampl> {
+        // calculate the return value: partial derivative of error squared with respect to input state coordinates
+        let mut gamma_input = Vector::<Ampl>::new(self.get_input_dimension());
+
+        let single_kernel_output_indexing = self.get_single_kernel_output_indexing();
+        let input_kernel_indexing_base = self.input_matrix_index.with_dimensions(self.kernel_dimension);
+
+        for (kernel_index, kernel) in self.kernels.iter_mut().enumerate() {
+            let mut kernel_delta_output_matrix = SliceView::new(
+                single_kernel_output_indexing.add_slice_offset(kernel_index * single_kernel_output_indexing.linear_dimension_length()),
+                delta_output.as_slice());
+
+            let mut kernel_diff = Matrix::new_with_dimension(self.kernel_dimension);
+            for (index, elm) in kernel_delta_output_matrix.iter_enum() {
+                let input_kernel_indexing = input_kernel_indexing_base.add_row_col_offset(index.0, index.1);
+                let mut gamma_input_kernel_view = MutSliceView::new(
+                    input_kernel_indexing,
+                    gamma_input.as_mut_slice());
+                let mut kernel_copy = kernel.clone();
+                kernel_copy.mul_scalar_assign(*elm);
+                gamma_input_kernel_view.add_matrix_assign(&kernel_copy);
+
+                let input_kernel_view = SliceView::new(input_kernel_indexing, input.as_slice());
+                kernel_diff.add_matrix_assign(&input_kernel_view);
+            }
+
+            // adjust kernel
+            kernel_diff.mul_scalar_assign(-ny);
+            kernel.add_matrix_assign(&kernel_diff);
+        }
+
+        gamma_input
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl ConvolutionalLayer {
+
+    /// Indexing for output for a single kernel
+    fn get_single_kernel_output_indexing(&self) -> MatrixLinearIndex {
+        MatrixLinearIndex::new_row_stride(MatrixDimensions {
+            rows: self.input_matrix_index.dimensions.rows - self.kernel_dimension.rows + 1,
+            columns: self.input_matrix_index.dimensions.columns - self.kernel_dimension.columns + 1,
+        })
+    }
+
+
+
+
+    fn set_random_weights_impl<R: Rng>(&mut self, mut rng: R) {
+        self.kernels.iter_mut().for_each(|kern| kern.apply_ref(|_| rng.gen_range(-1.0..1.0)));
     }
 }
 
@@ -142,7 +165,7 @@ mod tests {
         let layer = ConvolutionalLayer::new(input_indexing, MatrixDimensions{rows: 4, columns: 5}, 5);
 
         let expected_kernel_output_indexing = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows: 9, columns: 6});
-        assert_eq!(expected_kernel_output_indexing, layer.get_kernel_output_indexing());
+        assert_eq!(expected_kernel_output_indexing, layer.get_single_kernel_output_indexing());
         assert_eq!(5 * (9 * 6), layer.get_output_dimension());
     }
 
@@ -166,7 +189,7 @@ mod tests {
 
         // calculate output
         let output = layer.evaluate_input_no_sigmoid(&input);
-        let output_indexing = layer.get_kernel_output_indexing();
+        let output_indexing = layer.get_single_kernel_output_indexing();
         let output_matrix1 = SliceView::new(output_indexing, output.as_slice());
         let output_matrix2 = SliceView::new(output_indexing.add_slice_offset(output_indexing.linear_dimension_length()), output.as_slice());
 

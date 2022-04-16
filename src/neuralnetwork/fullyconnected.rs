@@ -11,14 +11,12 @@ use crate::vector::Vector;
 pub struct FullyConnectedLayer
 {
     weights: Matrix<Ampl>,
-    biases: bool,
 }
 
 impl FullyConnectedLayer {
-    pub fn new(input_dimension: usize, output_dimension: usize, biases: bool) -> FullyConnectedLayer {
+    pub fn new(input_dimension: usize, output_dimension: usize) -> FullyConnectedLayer {
         FullyConnectedLayer {
             weights: Matrix::new(output_dimension, input_dimension),
-            biases,
         }
     }
 }
@@ -56,22 +54,18 @@ impl Layer for FullyConnectedLayer {
         self.set_random_weights_impl(rng);
     }
 
-    fn evaluate_input(&self, input: &Vector<Ampl>, sigmoid: fn(Ampl) -> Ampl) -> Vector<Ampl> {
-        if input.len() != self.get_input_dimension() {
-            panic!("Input state length {} not equals to weights column count {}", input.len(), self.weights.dimensions().columns);
-        }
-        self.weights.mul_vector(input).apply(sigmoid)
+    fn evaluate_input_without_activation(&self, input: &Vector<Ampl>) -> Vector<Ampl> {
+        self.weights.mul_vector(input)
     }
 
-    fn back_propagate(&mut self, input: &Vector<Ampl>, gamma_output: &Vector<Ampl>, sigmoid_derived: fn(Ampl) -> Ampl, ny: Ampl) -> Vector<Ampl> {
-        // the delta vector is the partial derivative of error squared with respect to the layer output before the sigmoid function is applied
-        let delta_output = self.weights.mul_vector(input).apply(sigmoid_derived).mul_comp(gamma_output);
-
+    fn back_propagate_without_activation(&mut self, input: &Vector<Ampl>, delta_output: Vector<Ampl>, ny: Ampl) -> Vector<Ampl> {
         // calculate the return value: partial derivative of error squared with respect to input state coordinates
         let gamma_input = self.weights.mul_vector_lhs(&delta_output);
 
         // adjust weights
-        self.weights -= ny * delta_output.to_matrix().mul_mat(&input.clone().to_matrix().transpose());
+        let weight_delta = ny * delta_output.to_matrix().mul_mat(&input.clone().to_matrix().transpose());
+        let a = 0;
+        self.weights -= weight_delta;
 
         gamma_input
     }
@@ -82,6 +76,7 @@ impl Layer for FullyConnectedLayer {
 }
 
 impl FullyConnectedLayer {
+
     fn set_random_weights_impl<R: Rng>(&mut self, mut rng: R) {
         self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
     }
