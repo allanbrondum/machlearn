@@ -27,7 +27,7 @@ fn main() {
 
     let layer = FullyConnectedLayer::new(mnistdigits::IMAGE_PIXEL_COUNT, 10);
     let mut network = Network::new(
-        vec!(LayerContainer::new(Box::new(layer), ActivationFunction::sigmoid())),
+        vec!(LayerContainer::new(Box::new(layer), ActivationFunction::relu01())),
         false);
 
     if false {

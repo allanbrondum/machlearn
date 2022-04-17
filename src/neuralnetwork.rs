@@ -71,6 +71,17 @@ pub struct ActivationFunction {
 }
 
 impl ActivationFunction {
+    fn apply(&self, input: Ampl) -> Ampl {
+        (self.activation_function)(input)
+    }
+
+    fn apply_derived(&self, input: Ampl) -> Ampl {
+        (self.activation_function_derived)(input)
+    }
+
+}
+
+impl ActivationFunction {
     pub fn sigmoid() -> Self {
         ActivationFunction {
             activation_function: sigmoid_logistic,
@@ -82,6 +93,13 @@ impl ActivationFunction {
         ActivationFunction {
             activation_function: relu,
             activation_function_derived: relu_derived,
+        }
+    }
+
+    pub fn relu01() -> Self {
+        ActivationFunction {
+            activation_function: relu01,
+            activation_function_derived: relu01_derived,
         }
     }
 }
@@ -154,7 +172,8 @@ impl Network {
         state
     }
 
-    pub fn back_propagate(&mut self, input: &Vector<Ampl>, expected_output: &Vector<Ampl>, ny: Ampl, print: bool) -> Ampl {
+    pub fn back_propagate(&mut self, input: &Vector<Ampl>, expected_output: &Vector<Ampl>, ny: Ampl,
+                          print: bool, sampler: &mut NetworkBackPropagateSampler) {
         if input.len() != self.layers.first().unwrap().layer.get_input_dimension() {
             panic!("Input state length {} not equals to first layer state vector length {}", input.len(), self.layers.first().unwrap().layer.get_input_dimension())
         }
@@ -180,14 +199,11 @@ impl Network {
         // backpropagation
         let diff = (state.clone() - expected_output);
         let err_sqr = diff.scalar_prod(&diff);
+        sampler.sample_iteration(err_sqr);
         let mut gamma = 2. * (state - expected_output);
-        for layer_input in self.layers.iter_mut().rev().zip(layer_input_states.iter().rev()) {
-            let layer = layer_input.0;
-            let input = layer_input.1;
-
-            gamma = layer.back_propagate(input, gamma, ny);
+        for (index, (layer, input)) in self.layers.iter_mut().rev().zip(layer_input_states.iter().rev()).enumerate() {
+            gamma = layer.back_propagate(input, gamma, ny, sampler.layers_samples.get_mut(index).unwrap());
         }
-        err_sqr
     }
 }
 
@@ -207,9 +223,13 @@ impl LayerContainer {
     /// (the dimension of `gamma_output` is thus [`get_output_dimension`]). The method should return
     /// the partial derivatives of the error squared evaluated at the given `input` with respect to the input
     /// state coordinates (the dimension of the returned vector is thus [`get_input_dimension`]).
-    fn back_propagate(&mut self, input: &Vector<Ampl>, gamma_output: Vector<Ampl>, ny: Ampl) -> Vector<Ampl> {
+    fn back_propagate(&mut self, input: &Vector<Ampl>, gamma_output: Vector<Ampl>, ny: Ampl, sampler: &mut NetworkBackPropagateLayerSampler) -> Vector<Ampl> {
         // the delta vector is the partial derivative of error squared with respect to the layer output before the sigmoid function is applied
-        let delta_output = self.layer.evaluate_input_without_activation(input).apply(self.activation_function.activation_function_derived).mul_comp(&gamma_output);
+        sampler.input.sample(input.iter().copied());
+        let output_no_activation = self.layer.evaluate_input_without_activation(input);
+        sampler.output_without_activation.sample(output_no_activation.iter().copied());
+        let delta_output = output_no_activation.apply(self.activation_function.activation_function_derived).mul_comp(&gamma_output);
+        sampler.delta_output.sample(delta_output.iter().copied());
 
         self.layer.back_propagate_without_activation(&input, delta_output, ny)
     }
@@ -284,29 +304,91 @@ impl Display for Network
     }
 }
 
-struct NetworkBackPropagateSampler {
+struct MinMaxSum {
+    min: Option<Ampl>,
+    max: Option<Ampl>,
+    sum: Ampl,
+    count: usize,
+}
+
+impl MinMaxSum {
+    fn new() -> Self {
+        MinMaxSum {
+            min: None,
+            max: None,
+            sum: 0.0,
+            count: 0,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.min = None;
+        self.max = None;
+        self.sum = 0.0;
+        self.count = 0;
+    }
+
+    fn sample(&mut self, iter: impl Iterator<Item=Ampl>) {
+
+    }
+}
+
+struct NetworkBackPropagateLayerSampler {
+    delta_weights: MinMaxSum,
+    delta_output: MinMaxSum,
+    input: MinMaxSum,
+    output_without_activation: MinMaxSum,
+}
+
+impl NetworkBackPropagateLayerSampler {
+    fn new() -> NetworkBackPropagateLayerSampler {
+        NetworkBackPropagateLayerSampler {
+            delta_weights: MinMaxSum::new(),
+            delta_output: MinMaxSum::new(),
+            input: MinMaxSum::new(),
+            output_without_activation: MinMaxSum::new(),
+        }
+    }
+
+    fn reset_sampling(&mut self) {
+        self.delta_weights.reset();
+        self.delta_output.reset();
+        self.input.reset();
+        self.output_without_activation.reset();
+    }
+}
+
+pub struct NetworkBackPropagateSampler {
     err_sqr: Ampl,
     count: usize,
     total_count: usize,
-    axis_max: Option<Ampl>,
+    err_sqr_axis_max: Option<Ampl>,
+    layers_samples: Vec<NetworkBackPropagateLayerSampler>,
 }
 
 impl NetworkBackPropagateSampler {
-    fn new() -> NetworkBackPropagateSampler {
-        NetworkBackPropagateSampler{err_sqr:0.0, count:0, axis_max: None, total_count: 0}
+    fn new(layer_count: usize) -> NetworkBackPropagateSampler {
+        NetworkBackPropagateSampler {
+            err_sqr: 0.0,
+            count: 0,
+            err_sqr_axis_max: None,
+            total_count: 0,
+            layers_samples: (0..layer_count).map(|_| NetworkBackPropagateLayerSampler::new()).collect(),
+        }
     }
 
-    fn single_iteration(&mut self, err_sqr: Ampl) {
+    fn sample_iteration(&mut self, err_sqr: Ampl) {
         self.total_count += 1;
         self.count += 1;
         self.err_sqr += err_sqr;
-
-
     }
 
-    fn clear_sample_batch(&mut self) {
+    fn reset_sampling(&mut self) {
         self.count = 0;
         self.err_sqr = 0.0;
+        for layer_sample in &mut self.layers_samples {
+            layer_sample.reset_sampling();
+        }
     }
 
     fn mean_err_sqr_for_batch(&self) -> Ampl {
@@ -319,14 +401,13 @@ pub fn run_learning_iterations(network: &mut Network, samples: impl Iterator<Ite
     println!("learning");
 
     const COUNT_SAMPLE: usize = 1000;
-    let mut back_prop_sampler = NetworkBackPropagateSampler::new();
+    let mut back_prop_sampler = NetworkBackPropagateSampler::new(network.layer_count());
     for sample in samples {
-        let err_sqr = network.back_propagate(&sample.0, &sample.1, ny, print);
-        back_prop_sampler.single_iteration(err_sqr);
+        network.back_propagate(&sample.0, &sample.1, ny, print, &mut back_prop_sampler);
 
         if back_prop_sampler.count == COUNT_SAMPLE {
             print_learning_stats(network, &mut back_prop_sampler);
-            back_prop_sampler.clear_sample_batch();
+            back_prop_sampler.reset_sampling();
         }
     }
 
@@ -336,12 +417,12 @@ pub fn run_learning_iterations(network: &mut Network, samples: impl Iterator<Ite
 
 fn print_learning_stats(network: &Network, sampler: &mut NetworkBackPropagateSampler) {
     let err_sqr_mean = sampler.err_sqr / sampler.count as Ampl;
-    if sampler.axis_max.is_none() {
-        sampler.axis_max.replace(err_sqr_mean);
+    if sampler.err_sqr_axis_max.is_none() {
+        sampler.err_sqr_axis_max.replace(err_sqr_mean);
     }
 
     const AXIS_CHARS: usize = 100;
-    let x = (AXIS_CHARS - 1).min((err_sqr_mean / sampler.axis_max.unwrap() * AXIS_CHARS as Ampl) as usize);
+    let x = (AXIS_CHARS - 1).min((err_sqr_mean / sampler.err_sqr_axis_max.unwrap() * AXIS_CHARS as Ampl) as usize);
 
     let layer_weights = network.get_all_weights().into_iter()
         .map(|v| v.iter().flat_map(|m| m.iter()).copied().minmax_by(cmp_ampl_ref))
@@ -444,6 +525,14 @@ fn relu(input: Ampl) -> Ampl {
 
 fn relu_derived(input: Ampl) -> Ampl {
     if input >= 0.0 {1.0} else {0.0}
+}
+
+fn relu01(input: Ampl) -> Ampl {
+    if input >= 1.0 {1.0} else if input >= 0.0 {input} else {0.0}
+}
+
+fn relu01_derived(input: Ampl) -> Ampl {
+    if input >= 1.0 {0.0} else if input >= 1.0 {input} else {0.0}
 }
 
 
