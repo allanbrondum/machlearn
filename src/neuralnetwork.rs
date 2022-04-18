@@ -160,14 +160,11 @@ impl Network {
         }
         // evaluate states feed forward through layers
         let mut state= input.clone();
-        if self.biases {
-            *state.last() = 1.0;
-        }
         for layer in &self.layers {
-            state = layer.evaluate_input(&state);
             if self.biases {
                 *state.last() = 1.0;
             }
+            state = layer.evaluate_input(&state);
         }
         state
     }
@@ -184,14 +181,11 @@ impl Network {
         // first evaluate states using feed forward
         let mut layer_input_states = Vec::new();
         let mut state= input.clone();
-        if self.biases {
-            *state.last() = 1.0;
-        }
         for layer in &self.layers {
-            let mut output = layer.evaluate_input(&state);
             if self.biases {
-                *output.last() = 1.0;
+                *state.last() = 1.0;
             }
+            let mut output = layer.evaluate_input(&state);
             layer_input_states.push(state);
             state = output;
         }
@@ -202,7 +196,11 @@ impl Network {
         sampler.sample_iteration(err_sqr);
         let mut gamma = 2. * (state - expected_output);
         for (index, (layer, input)) in self.layers.iter_mut().rev().zip(layer_input_states.iter().rev()).enumerate() {
-            gamma = layer.back_propagate(input, gamma, ny, sampler.layers_samples.get_mut(index).unwrap());
+            let samples_index = sampler.layers_samples.len() - 1 - index;
+            gamma = layer.back_propagate(input, gamma, ny, sampler.layers_samples.get_mut(samples_index).unwrap());
+            if self.biases {
+                *gamma.last() = 0.0;
+            }
         }
     }
 }
@@ -311,6 +309,12 @@ struct MinMaxSum {
     count: usize,
 }
 
+impl Display for MinMaxSum {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:>7.3}/{:>7.3}/{:>7.3}", self.min.unwrap(), self.sum / self.count as Ampl, self.max.unwrap())
+    }
+}
+
 impl MinMaxSum {
     fn new() -> Self {
         MinMaxSum {
@@ -321,6 +325,12 @@ impl MinMaxSum {
         }
     }
 
+    fn new_from_sample(iter: impl Iterator<Item=Ampl>) -> Self {
+        let mut min_max_sum = Self::new();
+        min_max_sum.sample(iter);
+        min_max_sum
+    }
+
     fn reset(&mut self) {
         self.min = None;
         self.max = None;
@@ -329,10 +339,26 @@ impl MinMaxSum {
     }
 
     fn sample(&mut self, iter: impl Iterator<Item=Ampl>) {
-
+        iter.for_each(|value| {
+            if self.min.is_none() {
+                self.min = Some(value);
+            }
+            if self.max.is_none() {
+                self.max = Some(value);
+            }
+            if value < self.min.unwrap() {
+                self.min.replace(value);
+            }
+            if value > self.max.unwrap() {
+                self.max.replace(value);
+            }
+            self.sum += value;
+            self.count += 1;
+        });
     }
 }
 
+/// Used to provide statistics on back propagation
 struct NetworkBackPropagateLayerSampler {
     delta_weights: MinMaxSum,
     delta_output: MinMaxSum,
@@ -358,6 +384,7 @@ impl NetworkBackPropagateLayerSampler {
     }
 }
 
+/// Used to provide statistics on back propagation
 pub struct NetworkBackPropagateSampler {
     err_sqr: Ampl,
     count: usize,
@@ -396,16 +423,15 @@ impl NetworkBackPropagateSampler {
     }
 }
 
-pub fn run_learning_iterations(network: &mut Network, samples: impl Iterator<Item=Sample>, ny: Ampl, print: bool) {
+pub fn run_learning_iterations(network: &mut Network, samples: impl Iterator<Item=Sample>, ny: Ampl, print: bool, sample_count: usize) {
     let start = Instant::now();
     println!("learning");
 
-    const COUNT_SAMPLE: usize = 1000;
     let mut back_prop_sampler = NetworkBackPropagateSampler::new(network.layer_count());
     for sample in samples {
         network.back_propagate(&sample.0, &sample.1, ny, print, &mut back_prop_sampler);
 
-        if back_prop_sampler.count == COUNT_SAMPLE {
+        if back_prop_sampler.count == sample_count {
             print_learning_stats(network, &mut back_prop_sampler);
             back_prop_sampler.reset_sampling();
         }
@@ -421,16 +447,17 @@ fn print_learning_stats(network: &Network, sampler: &mut NetworkBackPropagateSam
         sampler.err_sqr_axis_max.replace(err_sqr_mean);
     }
 
-    const AXIS_CHARS: usize = 100;
+    const AXIS_CHARS: usize = 50;
     let x = (AXIS_CHARS - 1).min((err_sqr_mean / sampler.err_sqr_axis_max.unwrap() * AXIS_CHARS as Ampl) as usize);
 
-    let layer_weights = network.get_all_weights().into_iter()
-        .map(|v| v.iter().flat_map(|m| m.iter()).copied().minmax_by(cmp_ampl_ref))
+    let layer_weights_display = network.get_all_weights().into_iter()
+        .map(|v|  MinMaxSum::new_from_sample(v.iter().flat_map(|m| m.iter()).copied()))
         .enumerate()
-        .filter_map(|(index, minmaxres)| match minmaxres { MinMaxResult::MinMax(min, max) => Some((index, min, max)), _ => None})
-        // .map(|(index, min, max)| format_args!("l{} weights min/max {:.3}/{:.3}", index, min, max))
-        .format_with(", ", |(index, min, max), f| f(&format_args!("l{} weights min/max {:>7.3}/{:>7.3}", index + 1, min, max)));
-    println!("|{0:>1$}{2:>3$}| errsqr: {4:>.3}, samples: {5:>6}, {6}", "*", x + 1, "", AXIS_CHARS - x - 1, err_sqr_mean, sampler.total_count, layer_weights);
+        .format_with(", ", |(index, min_max_sum), f| f(&format_args!("l{} weights {}", index + 1, min_max_sum)));
+    let layer_back_prop_stats_display = sampler.layers_samples.iter()
+        .enumerate()
+        .format_with(", ", |(index, sampler), f| f(&format_args!("l{} in {} out {} out der {}", index + 1, sampler.input, sampler.output_without_activation, sampler.delta_output)));
+    println!("|{0:>1$}{2:>3$}| errsqr: {4:>.3}, samples: {5:>6}, {6} {7}", "*", x + 1, "", AXIS_CHARS - x - 1, err_sqr_mean, sampler.total_count, layer_weights_display, layer_back_prop_stats_display);
 
 
 }
@@ -532,7 +559,7 @@ fn relu01(input: Ampl) -> Ampl {
 }
 
 fn relu01_derived(input: Ampl) -> Ampl {
-    if input >= 1.0 {0.0} else if input >= 1.0 {input} else {0.0}
+    if input >= 1.0 {0.0} else if input >= 0.0 {1.0} else {0.0}
 }
 
 

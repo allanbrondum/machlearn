@@ -494,6 +494,10 @@ impl<T> Matrix<T>
     pub fn into_elements(self) -> Vec<T> {
         self.elements
     }
+
+    pub fn as_slice(&self) -> &[T] {
+        self.elements.as_slice()
+    }
 }
 
 pub struct StrideIter<'a, T> {

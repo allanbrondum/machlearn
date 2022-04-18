@@ -44,7 +44,7 @@ fn main() {
     let learning_samples = samples.clone().take(100000);
     let test_samples = samples.clone().take(1000);
 
-    neuralnetwork::run_learning_iterations(&mut network, learning_samples, 0.5, false);
+    neuralnetwork::run_learning_iterations(&mut network, learning_samples, 0.5, false, 1000);
     let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
 
     println!("error squared: {}", errsqr);

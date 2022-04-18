@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter};
 use rand::Rng;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
+use crate::datasets::imagedatasets;
 use crate::matrix::{Matrix, MatrixDimensions, MatrixLinearIndex, MatrixT, MutSliceView, SliceView};
 use crate::neuralnetwork::{Ampl, Layer};
 use crate::vector::Vector;
@@ -104,7 +105,8 @@ impl Layer for ConvolutionalLayer {
                 kernel_copy.mul_scalar_assign(*elm);
                 gamma_input_kernel_view.add_matrix_assign(&kernel_copy);
 
-                let input_kernel_view = SliceView::new(input_kernel_indexing, input.as_slice());
+                let mut input_kernel_view = SliceView::new(input_kernel_indexing, input.as_slice()).copy_to_matrix();
+                input_kernel_view.mul_scalar_assign(*elm);
                 kernel_diff.add_matrix_assign(&input_kernel_view);
             }
 
@@ -124,26 +126,26 @@ impl Layer for ConvolutionalLayer {
 impl ConvolutionalLayer {
 
     /// Indexing for output for a single kernel
-    fn get_single_kernel_output_indexing(&self) -> MatrixLinearIndex {
+    pub fn get_single_kernel_output_indexing(&self) -> MatrixLinearIndex {
         MatrixLinearIndex::new_row_stride(MatrixDimensions {
             rows: self.input_matrix_index.dimensions.rows - self.kernel_dimension.rows + 1,
             columns: self.input_matrix_index.dimensions.columns - self.kernel_dimension.columns + 1,
         })
     }
 
-
-
-
     fn set_random_weights_impl<R: Rng>(&mut self, mut rng: R) {
-        self.kernels.iter_mut().for_each(|kern| kern.apply_ref(|_| rng.gen_range(-1.0..1.0)));
+        let range = 1.0 / (self.kernel_dimension.cell_count()) as Ampl;
+        self.kernels.iter_mut().for_each(|kern| kern.apply_ref(|_| rng.gen_range(0.0..range)));
     }
 }
 
 impl Display for ConvolutionalLayer
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+
         for (index, kernel) in self.kernels.iter().enumerate() {
-            write!(f, "kernel {}\n{}", index, kernel)?;
+            write!(f, "kernel {}\n", index)?;
+            imagedatasets::print_matrix(kernel);
         }
 
         std::fmt::Result::Ok(())
@@ -188,7 +190,7 @@ mod tests {
         *input_matrix.elm_mut(3, 6) = 1.0;
 
         // calculate output
-        let output = layer.evaluate_input_no_sigmoid(&input);
+        let output = layer.evaluate_input_without_activation(&input);
         let output_indexing = layer.get_single_kernel_output_indexing();
         let output_matrix1 = SliceView::new(output_indexing, output.as_slice());
         let output_matrix2 = SliceView::new(output_indexing.add_slice_offset(output_indexing.linear_dimension_length()), output.as_slice());

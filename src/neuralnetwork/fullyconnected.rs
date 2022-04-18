@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter};
 use rand::Rng;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
+use crate::datasets::imagedatasets;
 use crate::matrix::{Matrix, MatrixT};
 use crate::neuralnetwork::{Ampl, Layer};
 use crate::vector::Vector;
@@ -64,7 +65,6 @@ impl Layer for FullyConnectedLayer {
 
         // adjust weights
         let weight_delta = ny * delta_output.to_matrix().mul_mat(&input.clone().to_matrix().transpose());
-        let a = 0;
         self.weights -= weight_delta;
 
         gamma_input
@@ -78,14 +78,16 @@ impl Layer for FullyConnectedLayer {
 impl FullyConnectedLayer {
 
     fn set_random_weights_impl<R: Rng>(&mut self, mut rng: R) {
-        self.weights.apply_ref(|_| rng.gen_range(-1.0..1.0));
+        let range = 1.0 / (self.weights.column_count()) as Ampl;
+        self.weights.apply_ref(|_| rng.gen_range(0.0..range));
     }
 }
 
 impl Display for FullyConnectedLayer
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "weights\n{}", self.weights)?;
+        write!(f, "weights\n")?;
+        imagedatasets::print_matrix(&self.weights);
 
         std::fmt::Result::Ok(())
     }

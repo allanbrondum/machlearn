@@ -1,5 +1,7 @@
 use std::cmp::Ordering;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Write};
+use std::fmt;
+use std::io;
 use itertools::Itertools;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use crate::matrix::{MatrixIndex, MatrixLinearIndex, MatrixT, SliceView};
@@ -36,12 +38,16 @@ pub fn print_matrix_max<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) {
 }
 
 pub fn print_matrix<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) {
+    print_matrix_write(&mut std::io::stdout(), matrix);
+}
+
+pub fn print_matrix_write<'a, M: MatrixT<'a, Ampl>>(write: &mut impl io::Write, matrix: &'a M) {
     let min = matrix.iter().copied().min_by(cmp_ampl_ref).unwrap().min(0.0);
     let max = matrix.iter().copied().max_by(cmp_ampl_ref).unwrap();
     let line: String = std::iter::from_fn(|| Some('-')).take(matrix.column_count() + 2).collect();
-    println!("{} min: {} max: {}", line, min, max);
+    write!(write, "{} min: {} max: {}\n", line, min, max);
     for row in 0..matrix.row_count() {
-        println!("|{}|", matrix.row_iter(row)
+        write!(write, "|{}|\n", matrix.row_iter(row)
             .map(|val| match (256. * (val - min) / (max - min)) as u8 {
                 0..=50 => ' ',
                 51..=150 => '.',
@@ -50,7 +56,7 @@ pub fn print_matrix<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) {
                 _ => panic!("Unhandled value {}", val) })
             .format(""));
     }
-    println!("{}", line);
+    write!(write, "{}\n", line);
 }
 
 fn index_of_max<'a, M: MatrixT<'a, Ampl>>(matrix: &'a M) -> MatrixIndex {
