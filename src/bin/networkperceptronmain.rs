@@ -9,7 +9,7 @@ use machlearn::{neuralnetwork};
 use machlearn::neuralnetwork::Network;
 
 fn main() {
-    let mut network = Network::new_fully_connected(vec!(8, 1));
+    let mut network = Network::new_dense(vec!(8, 1));
     network.set_random_weights();
 
     let mut rng = rand::thread_rng();

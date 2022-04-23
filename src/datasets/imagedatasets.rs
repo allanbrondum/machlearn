@@ -1,10 +1,12 @@
-use std::cmp::Ordering;
-use std::fmt::{Display, Formatter, Write};
-use std::fmt;
+use std::fmt::Display;
 use std::io;
+
 use itertools::Itertools;
+use rand_pcg::Pcg64;
+use rand_seeder::Seeder;
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use crate::matrix::{MatrixIndex, MatrixLinearIndex, MatrixT, SliceView};
+
+use crate::matrix::{Matrix, MatrixDimensions, MatrixIndex, MatrixLinearIndex, MatrixT, SliceView};
 use crate::neuralnetwork::{Ampl, cmp_ampl, cmp_ampl_ref, Network, Sample};
 
 pub fn print_sample(sample: &Sample, input_matrix_index: MatrixLinearIndex, output_matrix_indexes: &Vec<MatrixLinearIndex>) {
@@ -45,7 +47,7 @@ pub fn print_matrix_write<'a, M: MatrixT<'a, Ampl>>(write: &mut impl io::Write, 
     let min = matrix.iter().copied().min_by(cmp_ampl_ref).unwrap().min(0.0);
     let max = matrix.iter().copied().max_by(cmp_ampl_ref).unwrap();
     let line: String = std::iter::from_fn(|| Some('-')).take(matrix.column_count() + 2).collect();
-    write!(write, "{} min: {} max: {}\n", line, min, max);
+    write!(write, "{} min: {:.5} max: {:.5}\n", line, min, max);
     for row in 0..matrix.row_count() {
         write!(write, "|{}|\n", matrix.row_iter(row)
             .map(|val| match (256. * (val - min) / (max - min)) as u8 {
@@ -112,4 +114,49 @@ fn test_sample(network: &Network, sample: &Sample, output_matrix_indexes: &Vec<M
         println!("Guess {}, correct {}", guess_indexes.iter().format(","), correct_indexes.iter().format(","));
     }
     guess_indexes == correct_indexes
+}
+
+pub fn create_kernel_patterns(kernel_dimension: MatrixDimensions, kernel_count: usize) -> Vec<Matrix<Ampl>> {
+    let mut vec = Vec::new();
+    let mut rng: Pcg64 = Seeder::from(0).make_rng();
+    for j in 0..kernel_count {
+        let mut m = Matrix::new_with_dimension(kernel_dimension);
+
+        // let range = 1.0 / 10.0 as Ampl;
+        // m.apply_ref(|_| rng.gen_range(0.0..range));
+
+        set_kernel(&mut m, j);
+        vec.push(m);
+    }
+    vec
+}
+
+fn set_kernel(kernel: &mut Matrix<Ampl>, kernel_number: usize) {
+    const VALUE: Ampl = 1.0;
+    match kernel_number {
+        0 => {
+            let row_middle = kernel.row_count() / 2;
+            for i in 0..kernel.column_count() {
+                kernel[(row_middle, i)] = VALUE;
+            }
+        },
+        1 => {
+            let col_middle = kernel.column_count() / 2;
+            for i in 0..kernel.row_count() {
+                kernel[(i, col_middle)] = VALUE;
+            }
+        },
+        2 => {
+            for i in 0..kernel.column_count().min(kernel.row_count()) {
+                kernel[(i, i)] = VALUE;
+            }
+        },
+        3 => {
+            let row_count = kernel.row_count();
+            for i in 0..kernel.column_count().min(kernel.row_count()) {
+                kernel[(row_count - i - 1, i)] = VALUE;
+            }
+        },
+        _ => panic!("Unhandled kernel number {}", kernel_number),
+    }
 }

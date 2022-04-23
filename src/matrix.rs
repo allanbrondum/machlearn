@@ -1,13 +1,15 @@
 //! Matrix type and arithmetic operations on the Matrix.
 
-use std::ops::{Index, IndexMut, Neg, Add, AddAssign, SubAssign, Sub, Mul, MulAssign};
 use std::fmt::{Display, Formatter};
-use serde::{Serialize, Deserialize};
-use std::iter::{Map, Sum};
+use std::iter::Sum;
 use std::marker::PhantomData;
-pub use crate::matrix::transposedview::TransposedMatrixView;
+use std::ops::{Add, AddAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign};
+
+use serde::{Deserialize, Serialize};
+
 pub use crate::matrix::sliceview::MutSliceView;
 pub use crate::matrix::sliceview::SliceView;
+pub use crate::matrix::transposedview::TransposedMatrixView;
 use crate::vector::Vector;
 
 /// Operator implementations for matrix
@@ -45,8 +47,8 @@ impl MatrixElement for i64 {
 }
 
 pub trait MatrixT<'a, T: MatrixElement> {
-    type ColIter : Iterator<Item = &'a T> + 'a;
-    type RowIter : Iterator<Item = &'a T> + 'a;
+    type ColIter : Iterator<Item = &'a T>;
+    type RowIter : Iterator<Item = &'a T>;
 
     fn dimensions(&self) -> MatrixDimensions;
 
@@ -78,7 +80,7 @@ pub trait MatrixT<'a, T: MatrixElement> {
         AllElementsEnumeratedMutIter::new(self)
     }
 
-    // fn iter_mut(&'a mut self) -> AllElementsIter<'a, T, Self> where Self: Sized {
+    // fn iter_mut(&mut self) -> AllElementsIter<'_, T, Self> where Self: Sized {
     //     AllElementsMutIter::new(self)
     // }
 
@@ -186,7 +188,7 @@ pub struct AllElementsIter<'a, T: MatrixElement, M: MatrixT<'a, T>> {
 }
 
 impl<'a, T: MatrixElement, M: MatrixT<'a, T>> AllElementsIter<'a, T, M> {
-    fn new(inner: &'a M) -> AllElementsIter<'a, T, M> {
+    fn new(inner: &'a M) -> Self {
         AllElementsIter {
             inner,
             current_row_iter: inner.row_iter(0),

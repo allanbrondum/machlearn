@@ -14,6 +14,7 @@ pub struct ConvolutionalLayer
     input_matrix_index: MatrixLinearIndex,
     kernel_dimension: MatrixDimensions,
     kernels: Vec<Matrix<Ampl>>,
+    biases: Vector<Ampl>,
 }
 
 impl ConvolutionalLayer {
@@ -22,6 +23,7 @@ impl ConvolutionalLayer {
             input_matrix_index,
             kernel_dimension,
             kernels: (0..kernels).map(|_| Matrix::new_with_dimension(kernel_dimension)).collect(),
+            biases: Vector::new(kernels),
         }
     }
 }
@@ -76,7 +78,7 @@ impl Layer for ConvolutionalLayer {
                 let input_kernel_view = SliceView::new(
                     input_kernel_indexing.add_row_col_offset(index.0, index.1),
                     input.as_slice());
-                *elm = kernel.scalar_prod(&input_kernel_view);
+                *elm = kernel.scalar_prod(&input_kernel_view) + self.biases[kernel_index];
             }
         }
         output
@@ -96,6 +98,7 @@ impl Layer for ConvolutionalLayer {
                 delta_output.as_slice());
 
             let mut kernel_diff = Matrix::new_with_dimension(self.kernel_dimension);
+            let mut bias_diff = 0.0;
             for (index, elm) in kernel_delta_output_matrix.iter_enum() {
                 let input_kernel_indexing = input_kernel_indexing_base.add_row_col_offset(index.0, index.1);
                 let mut gamma_input_kernel_view = MutSliceView::new(
@@ -108,11 +111,13 @@ impl Layer for ConvolutionalLayer {
                 let mut input_kernel_view = SliceView::new(input_kernel_indexing, input.as_slice()).copy_to_matrix();
                 input_kernel_view.mul_scalar_assign(*elm);
                 kernel_diff.add_matrix_assign(&input_kernel_view);
+                bias_diff += *elm;
             }
 
             // adjust kernel
             kernel_diff.mul_scalar_assign(-ny);
             kernel.add_matrix_assign(&kernel_diff);
+            self.biases[kernel_index] -= ny * bias_diff;
         }
 
         gamma_input
@@ -146,6 +151,7 @@ impl Display for ConvolutionalLayer
         for (index, kernel) in self.kernels.iter().enumerate() {
             write!(f, "kernel {}\n", index)?;
             imagedatasets::print_matrix(kernel);
+            write!(f, "bias: {:.5}\n", self.biases[index])?;
         }
 
         std::fmt::Result::Ok(())

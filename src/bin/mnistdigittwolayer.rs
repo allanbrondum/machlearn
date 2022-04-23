@@ -1,37 +1,18 @@
-use std::{fs, io, iter};
-use std::any::Any;
-use std::cmp::Ordering;
-use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Bytes, Read, Write};
-use std::iter::{FromFn, Take};
-use std::ops::Deref;
-use std::rc::Rc;
-use std::time::Instant;
+use rayon::iter::ParallelBridge;
 
-use itertools::{Chunk, Itertools};
-use rand::Rng;
-use rayon::iter::{ParallelBridge, ParallelIterator};
-
-use machlearn::neuralnetwork::{ActivationFunction, Ampl, FullyConnectedLayer, Layer, LayerContainer, Sample};
-use machlearn::neuralnetwork;
-use machlearn::vector::Vector;
-use machlearn::matrix::{Matrix, MatrixT, MutSliceView};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use rand_pcg::Pcg64;
-use rand_seeder::Seeder;
 use machlearn::datasets::{imagedatasets, mnistdigits};
+use machlearn::matrix::{MatrixT, MutSliceView};
+use machlearn::neuralnetwork::{ActivationFunction, Ampl, FullyConnectedLayer, Layer, LayerContainer};
+use machlearn::neuralnetwork;
 use machlearn::neuralnetwork::Network;
 
 fn main() {
 
     let layer1 = FullyConnectedLayer::new(mnistdigits::IMAGE_PIXEL_COUNT, mnistdigits::IMAGE_PIXEL_COUNT);
     let layer2 = FullyConnectedLayer::new(mnistdigits::IMAGE_PIXEL_COUNT, 10);
-    let mut network = Network::new(
-        vec!(LayerContainer::new(Box::new(layer1), ActivationFunction::relu()),
-             LayerContainer::new(Box::new(layer2), ActivationFunction::sigmoid()),
-        ),
-        false);
+    let mut network = Network::new(vec!(LayerContainer::new(Box::new(layer1), ActivationFunction::relu()),
+                                    LayerContainer::new(Box::new(layer2), ActivationFunction::sigmoid()),
+    ));
 
     if false {
         mnistdigits::print_data_examples();

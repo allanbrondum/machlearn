@@ -1,27 +1,10 @@
-use std::{fs, io, iter};
-use std::any::Any;
-use std::cmp::Ordering;
-use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Bytes, Read, Write};
-use std::iter::{FromFn, Take};
-use std::ops::Deref;
-use std::rc::Rc;
-use std::time::Instant;
+use rayon::iter::ParallelBridge;
 
-use itertools::{Chunk, Itertools};
-use rand::Rng;
-use rayon::iter::{ParallelBridge, ParallelIterator};
-
-use machlearn::neuralnetwork::{ActivationFunction, Ampl, ConvolutionalLayer, FullyConnectedLayer, Layer, LayerContainer, Sample};
-use machlearn::neuralnetwork;
-use machlearn::vector::Vector;
-use machlearn::matrix::{Matrix, MatrixT, MutSliceView};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use rand_pcg::Pcg64;
-use rand_seeder::Seeder;
 use machlearn::datasets::{convolutiontest, imagedatasets};
 use machlearn::datasets::convolutiontest::KERNEL_INDEX;
+use machlearn::matrix::MatrixT;
+use machlearn::neuralnetwork::{ActivationFunction, Ampl, ConvolutionalLayer, Layer, LayerContainer};
+use machlearn::neuralnetwork;
 use machlearn::neuralnetwork::Network;
 
 const SYMBOLS: usize = 2;
@@ -29,9 +12,7 @@ const NY: Ampl = 0.001;
 
 fn main() {
     let layer = ConvolutionalLayer::new(convolutiontest::INPUT_INDEX, KERNEL_INDEX.dimensions, SYMBOLS);
-    let mut network = Network::new(
-        vec!(LayerContainer::new(Box::new(layer), ActivationFunction::relu())),
-        false);
+    let mut network = Network::new(vec!(LayerContainer::new(Box::new(layer), ActivationFunction::relu01())));
 
     if false {
         convolutiontest::print_data_examples(SYMBOLS);
@@ -39,8 +20,8 @@ fn main() {
 
     network.set_random_weights_seed(1);
 
-    const LEARNING_SAMPLES: usize = 100;
-    neuralnetwork::run_learning_iterations(&mut network, convolutiontest::get_learning_samples(SYMBOLS).take(LEARNING_SAMPLES), NY, false, 1);
+    const LEARNING_SAMPLES: usize = 1000;
+    neuralnetwork::run_learning_iterations(&mut network, convolutiontest::get_learning_samples(SYMBOLS).take(LEARNING_SAMPLES), NY, false, 100);
 
     if false {
         neuralnetwork::run_learning_iterations(&mut network, convolutiontest::get_learning_samples(SYMBOLS).take(20), NY, true, 100);
@@ -59,11 +40,7 @@ fn main() {
     println!("% correct: {:.2}", pct_correct);
 
     if true { // print kernels
-        let weights = &network.get_all_weights()[0];
-        for (i, &kernel) in weights.iter().enumerate() {
-            println!("kernel {}:\n", i);
-            imagedatasets::print_matrix(kernel);
-        }
+        println!("network:\n {}", network);
     }
 
 }

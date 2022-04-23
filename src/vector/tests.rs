@@ -62,6 +62,24 @@ fn add() {
 }
 
 #[test]
+fn add_vector() {
+    let mut a = Vector::new( 3);
+    a[0] = 1.1;
+    a[1] = 2.1;
+    let mut b = Vector::new(3);
+    b[0] = 10.;
+    b[1] = 20.;
+
+    let a = a.add_vector(&b);
+
+    assert_eq!(1.1 + 10., a[0]);
+    assert_eq!(2.1 + 20., a[1]);
+    assert_eq!(0., a[2]);
+
+}
+
+
+#[test]
 fn add_assign() {
     let mut a = Vector::new( 3);
     a[0] = 1.1;
@@ -77,6 +95,24 @@ fn add_assign() {
     assert_eq!(0., a[2]);
 
 }
+
+#[test]
+fn add_vector_assign() {
+    let mut a = Vector::new( 3);
+    a[0] = 1.1;
+    a[1] = 2.1;
+    let mut b = Vector::new(3);
+    b[0] = 10.;
+    b[1] = 20.;
+
+    a.add_vector_assign(&b);
+
+    assert_eq!(1.1 + 10., a[0]);
+    assert_eq!(2.1 + 20., a[1]);
+    assert_eq!(0., a[2]);
+
+}
+
 
 #[test]
 fn sub() {
@@ -96,6 +132,23 @@ fn sub() {
 }
 
 #[test]
+fn sub_vector() {
+    let mut a = Vector::new( 3);
+    a[0] = 1.1;
+    a[1] = 2.1;
+    let mut b = Vector::new(3);
+    b[0] = 10.;
+    b[1] = 20.;
+
+    let a = a.sub_vector(&b);
+
+    assert_eq!(1.1 - 10., a[0]);
+    assert_eq!(2.1 - 20., a[1]);
+    assert_eq!(0., a[2]);
+
+}
+
+#[test]
 fn sub_assign() {
     let mut a = Vector::new( 3);
     a[0] = 1.1;
@@ -105,6 +158,22 @@ fn sub_assign() {
     b[1] = 20.;
 
     a -= b;
+
+    assert_eq!(1.1 - 10., a[0]);
+    assert_eq!(2.1 - 20., a[1]);
+    assert_eq!(0., a[2]);
+}
+
+#[test]
+fn sub_vector_assign() {
+    let mut a = Vector::new( 3);
+    a[0] = 1.1;
+    a[1] = 2.1;
+    let mut b = Vector::new(3);
+    b[0] = 10.;
+    b[1] = 20.;
+
+    a.sub_vector_assign(&b);
 
     assert_eq!(1.1 - 10., a[0]);
     assert_eq!(2.1 - 20., a[1]);
@@ -164,6 +233,24 @@ fn to_matrix() {
     assert_eq!(MatrixDimensions {rows: 2, columns: 1}, m.dimensions());
     assert_eq!(1.1, *m.elm(0, 0));
     assert_eq!(2.1, *m.elm(1, 0));
+}
+
+#[test]
+fn as_matrix_mut() {
+    let mut a = Vector::new( 2);
+    a[0] = 1.1;
+    a[1] = 2.1;
+
+    let mut m = a.as_matrix_mut();
+
+    assert_eq!(MatrixDimensions {rows: 2, columns: 1}, m.dimensions());
+    assert_eq!(1.1, *m.elm(0, 0));
+    assert_eq!(2.1, *m.elm(1, 0));
+
+    *m.elm_mut(0, 0) = 3.1;
+    *m.elm_mut(1, 0) = 4.1;
+    assert_eq!(3.1, a[0]);
+    assert_eq!(4.1, a[1]);
 }
 
 #[test]
@@ -239,4 +326,16 @@ fn apply() {
 
     assert_eq!(3, a[0]);
     assert_eq!(9, a[1]);
+}
+
+#[test]
+fn apply_ref() {
+    let mut a = Vector::new(2);
+    a[0] = 1;
+    a[1] = 2;
+
+    a.apply_ref(|x| 2 * x);
+
+    assert_eq!(2, a[0]);
+    assert_eq!(4, a[1]);
 }

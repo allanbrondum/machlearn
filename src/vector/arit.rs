@@ -33,9 +33,7 @@ impl<T> AddAssign for Vector<T>
     where T: MatrixElement
 {
     fn add_assign(&mut self, other: Self) {
-        for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
-            *elm_pair.0 += *elm_pair.1;
-        }
+        self.add_vector_assign(&other);
     }
 }
 
@@ -72,9 +70,7 @@ impl<T> SubAssign<&Vector<T>> for Vector<T>
     where T: MatrixElement
 {
     fn sub_assign(&mut self, other: &Vector<T>) {
-        for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
-            *elm_pair.0 -= *elm_pair.1;
-        }
+        self.sub_vector_assign(other);
     }
 }
 

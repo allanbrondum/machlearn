@@ -41,4 +41,5 @@ fn main() {
 
     let b: TransposedMatrixView<_, _> = a.as_transpose();
 
+    let ar = &a;
 }

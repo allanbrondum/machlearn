@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 use std::ops::{Index, IndexMut, Deref, DerefMut};
 use itertools::Itertools;
 
-use crate::matrix::{Matrix, MatrixDimensions, MatrixElement, MatrixLinearIndex, MatrixT, MutSliceView};
+use crate::matrix::{Matrix, MatrixDimensions, MatrixElement, MatrixLinearIndex, MatrixT, MutSliceView, SliceView};
 
 /// Operator implementations for vector
 mod arit;
@@ -50,6 +50,34 @@ impl<T> Vector<T>
         Vector::from_vec(vec)
     }
 
+    pub fn add_vector_assign(&mut self, other: &Vector<T>) {
+        if self.len() != other.len() {
+            panic!("Vector lengths not equal: {} and {}", self.len(), other.len());
+        }
+        for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
+            *elm_pair.0 += *elm_pair.1;
+        }
+    }
+
+    pub fn add_vector(mut self, other: &Vector<T>) -> Vector<T> {
+        self.add_vector_assign(other);
+        self
+    }
+
+    pub fn sub_vector_assign(&mut self, other: &Vector<T>) {
+        if self.len() != other.len() {
+            panic!("Vector lengths not equal: {} and {}", self.len(), other.len());
+        }
+        for elm_pair in self.elements.iter_mut().zip(other.elements.iter()) {
+            *elm_pair.0 -= *elm_pair.1;
+        }
+    }
+
+    pub fn sub_vector(mut self, other: &Vector<T>) -> Vector<T> {
+        self.sub_vector_assign(other);
+        self
+    }
+
     pub fn iter(&self) -> impl Iterator<Item=&T> {
         self.elements.iter()
     }
@@ -60,8 +88,14 @@ impl<T> Vector<T>
             self.elements)
     }
 
-    pub fn as_matrix(&mut self) -> impl MatrixT<T> {
+    // pub fn as_matrix_mut(&mut self) -> impl MatrixT<T> { // TODO
+    pub fn as_matrix_mut(&mut self) -> MutSliceView<'_, T> {
         MutSliceView::new(self.matrix_linear_index(), &mut self.elements)
+    }
+
+    // pub fn as_matrix<'a>(&'a self) -> impl MatrixT<'a, T> { // TODO
+    pub fn as_matrix(&self) -> SliceView<'_, T> {
+        SliceView::new(self.matrix_linear_index(), &self.elements)
     }
 
     fn matrix_linear_index(&self) -> MatrixLinearIndex {
@@ -130,10 +164,14 @@ impl<T> Vector<T>
     /// Apply function to each component
     pub fn apply(self, mut func: impl FnMut(T) -> T) -> Self {
         let mut ret = self;
-        for elm in &mut ret.elements {
+        ret.apply_ref(func);
+        ret
+    }
+
+    pub fn apply_ref(&mut self, mut func: impl FnMut(T) -> T) {
+        for elm in &mut self.elements {
             *elm = func(*elm);
         }
-        ret
     }
 }
 

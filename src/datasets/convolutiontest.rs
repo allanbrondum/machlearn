@@ -1,18 +1,14 @@
-use crate::neuralnetwork::{Sample, Ampl};
-use crate::vector::Vector;
 use core::iter;
-use std::cmp::Ordering;
-use std::io::{BufReader, Read};
-use std::fs::File;
-use std::iter::Take;
-use itertools::Itertools;
+
 use rand::Rng;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
-use rayon::iter::{IterBridge, ParallelIterator};
+
 use crate::datasets::imagedatasets;
-use crate::matrix::{Matrix, MatrixDimensions, MatrixLinearIndex, MatrixT, MutSliceView};
+use crate::matrix::{Matrix, MatrixDimensions, MatrixLinearIndex, MatrixT};
+use crate::neuralnetwork::{Ampl, Sample};
 use crate::neuralnetwork::Network;
+use crate::vector::Vector;
 
 pub const IMAGE_WIDTH_HEIGHT: usize = 28;
 pub const IMAGE_PIXEL_COUNT: usize = IMAGE_WIDTH_HEIGHT * IMAGE_WIDTH_HEIGHT;

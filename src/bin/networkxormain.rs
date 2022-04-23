@@ -15,11 +15,9 @@ use machlearn::vector::Vector;
 fn main() {
     let layer1 = FullyConnectedLayer::new(3, 4);
     let layer2 = FullyConnectedLayer::new(4, 1);
-    let mut network = Network::new(
-        vec!(LayerContainer::new(Box::new(layer1), ActivationFunction::relu()),
-             LayerContainer::new(Box::new(layer2), ActivationFunction::sigmoid()),
-        ),
-        true);
+    let mut network = Network::new(vec!(LayerContainer::new(Box::new(layer1), ActivationFunction::relu()),
+                                    LayerContainer::new(Box::new(layer2), ActivationFunction::sigmoid()),
+    ));
 
     network.set_random_weights_seed(0);
 

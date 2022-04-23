@@ -1,58 +1,46 @@
-use std::{fs, io, iter};
-use std::any::Any;
-use std::cmp::Ordering;
-use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Bytes, Read, Write};
-use std::iter::{FromFn, Take};
-use std::ops::Deref;
-use std::rc::Rc;
-use std::time::Instant;
+use rayon::iter::ParallelBridge;
 
-use itertools::{Chunk, Itertools};
-use rand::Rng;
-use rayon::iter::{ParallelBridge, ParallelIterator};
-
+use machlearn::datasets::{imagedatasets, mnistdigits};
+use machlearn::matrix::{MatrixDimensions, MatrixT, SliceView};
 use machlearn::neuralnetwork::{ActivationFunction, Ampl, ConvolutionalLayer, FullyConnectedLayer, Layer, LayerContainer, Sample};
 use machlearn::neuralnetwork;
-use machlearn::vector::Vector;
-use machlearn::matrix::{Matrix, MatrixDimensions, MatrixT, MutSliceView, SliceView};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use rand_pcg::Pcg64;
-use rand_seeder::Seeder;
-use machlearn::datasets::{imagedatasets, mnistdigits};
 use machlearn::neuralnetwork::Network;
+
+const KERNELS: usize = 4;
+const KERNEL_DIMENSION: MatrixDimensions = MatrixDimensions::new(5, 5);
 
 fn main() {
 
-    const KERNELS: usize = 5;
-    const KERNEL_DIMENSION: MatrixDimensions = MatrixDimensions::new(5, 5);
-
-    let layer1 = ConvolutionalLayer::new(
+    let mut layer1 = ConvolutionalLayer::new(
         mnistdigits::INPUT_INDEX,
         KERNEL_DIMENSION,
         KERNELS);
     let kernel_indexing = layer1.get_single_kernel_output_indexing();
-    let layer2 = FullyConnectedLayer::new(layer1.get_output_dimension(), 10);
-    let mut network = Network::new(
-        vec!(
-            LayerContainer::new(Box::new(layer1), ActivationFunction::relu()),
-             LayerContainer::new(Box::new(layer2), ActivationFunction::sigmoid()),
-        ),
-        false);
+    layer1.set_weights(imagedatasets::create_kernel_patterns(KERNEL_DIMENSION, KERNELS));
+    // layer1.set_random_weights_seed(0);
+    let mut layer2 = FullyConnectedLayer::new(layer1.get_output_dimension(), 10);
+    layer2.set_random_weights_seed(0);
+
+    if true {
+        print_conv_layer_output(&layer1, mnistdigits::get_learning_samples().take(10));
+    }
+
+    let mut network = Network::new(vec!(
+        LayerContainer::new(Box::new(layer1), ActivationFunction::relu()),
+        LayerContainer::new(Box::new(layer2), ActivationFunction::sigmoid()),
+    ));
 
     if false {
         mnistdigits::print_data_examples();
     }
 
-    const NY: Ampl = 0.01;
+    const NY: Ampl = 0.001;
 
-    let read_from_file = true;
+    let read_from_file = false;
     if !read_from_file {
-        // learn weights
-        network.set_random_weights_seed(0);
+        println!("network:\n{}", network);
 
-        const LEARNING_SAMPLES: usize = 10_000;
+        const LEARNING_SAMPLES: usize = 20_000;
         neuralnetwork::run_learning_iterations(&mut network, mnistdigits::get_learning_samples().take(LEARNING_SAMPLES), NY, false, 10);
     } else {
         // read weights from file
@@ -87,5 +75,21 @@ fn main() {
     }
 
     neuralnetwork::write_network_to_file(&network, "mnist_tmp_weights.json");
+}
+
+fn print_conv_layer_output(conv_layer: &ConvolutionalLayer, samples: impl Iterator<Item=Sample>) {
+    for (index, sample) in samples.enumerate() {
+        let correct_matrix = SliceView::new (mnistdigits::OUTPUT_INDEX, &sample.1);
+        println!("Correct output {}", index);
+        imagedatasets::print_matrix(&correct_matrix);
+
+        let output = conv_layer.evaluate_input_without_activation(&sample.0);
+        let output_kernel_indexing = conv_layer.get_single_kernel_output_indexing();
+        for i in 0..KERNELS {
+            let output_matrix = SliceView::new(output_kernel_indexing.add_slice_offset(i * output_kernel_indexing.linear_dimension_length()), output.as_slice());
+            println!("Output {} kernel {}", index, i);
+            imagedatasets::print_matrix(&output_matrix);
+        }
+    }
 }
 

@@ -6,7 +6,7 @@ use machlearn::neuralnetwork::{FullyConnectedLayer, Layer, Network};
 
 fn main() {
 
-    let mut network = Network::new_fully_connected(vec!(5, 10));
+    let mut network = Network::new_dense(vec!(5, 10));
 
     let layer_a = FullyConnectedLayer::new(1, 2);
     let layer_a_ref = &layer_a;

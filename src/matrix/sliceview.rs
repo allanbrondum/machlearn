@@ -1,6 +1,4 @@
-use std::marker::PhantomData;
 use crate::matrix::{MatrixDimensions, MatrixElement, MatrixLinearIndex, MatrixT, StrideIter};
-use serde::{Serialize, Deserialize};
 
 pub struct MutSliceView<'a, T: MatrixElement> {
     inner: &'a mut [T],
@@ -101,7 +99,7 @@ impl<'a, T: MatrixElement> MatrixT<'a, T> for SliceView<'a, T> {
         panic!("Not mutable");
     }
 
-    fn row_iter(&'a self, row: usize) -> Self::RowIter {
+    fn row_iter(&self, row: usize) -> Self::RowIter {
         let offset = self.linear_index.linear_index(row, 0);
         StrideIter::new(self.inner, offset, self.linear_index.col_stride, self.linear_index.dimensions.columns)
     }

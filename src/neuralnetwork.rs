@@ -1,26 +1,25 @@
 //! Simple multilayer fully connected neural network using backpropagation of errors (gradient descent) for learning.
 
-use std::alloc::System;
 use std::any::Any;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
-use crate::vector::{Vector};
-use crate::matrix::{Matrix, MatrixDimensions, MatrixLinearIndex, MatrixT, MutSliceView, SliceView};
-use rand::Rng;
-use rayon::prelude::*;
-use std::time::Instant;
-use std::path::{PathBuf, Path};
 use std::fs;
-use std::io::Write;
 use std::io::BufRead;
 use std::io::Read;
+use std::io::Write;
 use std::ops::{Deref, Mul};
-use itertools::{Itertools, MinMaxResult};
-use rand::rngs::ThreadRng;
-use rand_pcg::Pcg64;
-use rand_seeder::Seeder;
-pub use fullyconnected::FullyConnectedLayer;
+use std::path::Path;
+use std::time::Instant;
+
+use itertools::Itertools;
+use rand::Rng;
+use rayon::prelude::*;
+
 pub use convolutional::ConvolutionalLayer;
+pub use dense::FullyConnectedLayer;
+
+use crate::matrix::{Matrix, MatrixT};
+use crate::vector::Vector;
 
 pub type Ampl = f64;
 
@@ -28,7 +27,7 @@ pub type Ampl = f64;
 mod tests;
 
 mod convolutional;
-mod fullyconnected;
+mod dense;
 
 /// Sample tuple, .0: input, .1: output
 pub struct Sample(pub Vector<Ampl>, pub Vector<Ampl>);
@@ -121,7 +120,6 @@ impl LayerContainer {
 pub struct Network
 {
     layers: Vec<LayerContainer>,
-    biases: bool,
 }
 
 impl Network {
@@ -161,9 +159,6 @@ impl Network {
         // evaluate states feed forward through layers
         let mut state= input.clone();
         for layer in &self.layers {
-            if self.biases {
-                *state.last() = 1.0;
-            }
             state = layer.evaluate_input(&state);
         }
         state
@@ -182,9 +177,6 @@ impl Network {
         let mut layer_input_states = Vec::new();
         let mut state= input.clone();
         for layer in &self.layers {
-            if self.biases {
-                *state.last() = 1.0;
-            }
             let mut output = layer.evaluate_input(&state);
             layer_input_states.push(state);
             state = output;
@@ -195,12 +187,13 @@ impl Network {
         let err_sqr = diff.scalar_prod(&diff);
         sampler.sample_iteration(err_sqr);
         let mut gamma = 2. * (state - expected_output);
+        let layer_count = self.layer_count();
+        let mut ny_with_factor = ny;
         for (index, (layer, input)) in self.layers.iter_mut().rev().zip(layer_input_states.iter().rev()).enumerate() {
-            let samples_index = sampler.layers_samples.len() - 1 - index;
-            gamma = layer.back_propagate(input, gamma, ny, sampler.layers_samples.get_mut(samples_index).unwrap());
-            if self.biases {
-                *gamma.last() = 0.0;
-            }
+            let layer_index = layer_count - 1 - index;
+            gamma = layer.back_propagate(input, gamma, ny_with_factor, sampler.layers_samples.get_mut(layer_index).unwrap());
+
+            ny_with_factor *= (gamma.len() as Ampl).sqrt(); // try to give higher adjustment to lower layers to counter vanishing gradients
         }
     }
 }
@@ -234,18 +227,7 @@ impl LayerContainer {
 }
 
 impl Network {
-    pub fn new_fully_connected(dimensions: Vec<usize>) -> Self {
-        Self::new_fully_connected_int(dimensions, false)
-    }
-
-    pub fn new_fully_connected_biases(dimensions: Vec<usize>) -> Self {
-        Self::new_fully_connected_int(dimensions, true)
-    }
-
-    fn new_fully_connected_int(
-        dimensions: Vec<usize>,
-        biases: bool) -> Self
-    {
+    pub fn new_dense(dimensions: Vec<usize>) -> Self {
         if dimensions.len() < 2 {
             panic!("Must have at least two dimensions, was {}", dimensions.len());
         }
@@ -254,12 +236,10 @@ impl Network {
             let boxed: Box<dyn Layer> = Box::new(FullyConnectedLayer::new(dimensions[i - 1], dimensions[i]));
             layers.push(LayerContainer::new(boxed, ActivationFunction::sigmoid()));
         }
-        Self::new(layers, biases)
+        Self::new(layers)
     }
 
-    pub fn new(
-        layers: Vec<LayerContainer>,
-        biases: bool) -> Self
+    pub fn new(layers: Vec<LayerContainer>) -> Self
     {
         if layers.is_empty() {
             panic!("Must have at least one layer");
@@ -273,7 +253,6 @@ impl Network {
 
         Network {
             layers,
-            biases,
         }
     }
 
