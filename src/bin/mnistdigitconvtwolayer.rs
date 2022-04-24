@@ -16,7 +16,7 @@ fn main() {
         KERNEL_DIMENSION,
         KERNELS);
     let kernel_indexing = layer1.get_single_kernel_output_indexing();
-    layer1.set_weights(imagedatasets::create_kernel_patterns(KERNEL_DIMENSION, KERNELS));
+    layer1.set_kernel_weights(imagedatasets::create_kernel_patterns(KERNEL_DIMENSION, KERNELS));
     // layer1.set_random_weights_seed(0);
     let mut layer2 = FullyConnectedLayer::new(layer1.get_output_dimension(), 10);
     layer2.set_random_weights_seed(0);

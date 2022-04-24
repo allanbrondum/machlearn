@@ -49,3 +49,16 @@ fn sigmoid_logistic() {
     assert!((act.activation_function_derived)(1.0) > 0.0);
     assert_eq!((act.activation_function_derived)(-1.0) as f32, (act.activation_function_derived)(1.0) as f32);
 }
+
+#[test]
+fn identity() {
+    let act = ActivationFunction::identity();
+
+    assert_eq!(-1.0, (act.activation_function)(-1.0));
+    assert_eq!(0.0, (act.activation_function)(0.0));
+    assert_eq!(1.0, (act.activation_function)(1.0));
+
+    assert_eq!(1.0, (act.activation_function_derived)(-1.0));
+    assert_eq!(1.0, (act.activation_function_derived)(0.0));
+    assert_eq!(1.0, (act.activation_function_derived)(1.0));
+}

@@ -7,8 +7,10 @@ use crate::datasets::imagedatasets;
 use crate::matrix::{Matrix, MatrixT};
 use crate::neuralnetwork::{Ampl, Layer};
 use crate::vector::Vector;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+/// Layer where all input and output states are connected
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FullyConnectedLayer
 {
     weights: Matrix<Ampl>,
@@ -24,19 +26,11 @@ impl FullyConnectedLayer {
     }
 }
 
+#[typetag::serde]
 impl Layer for FullyConnectedLayer {
 
     fn get_weights(&self) -> Vec<&Matrix<Ampl>> {
         vec!(&self.weights)
-    }
-
-    fn set_weights(&mut self, new_weights_vec: Vec<Matrix<Ampl>>) {
-        assert_eq!(1, new_weights_vec.len(), "Should only have one weight matrix, has {}", new_weights_vec.len());
-        let new_weights = new_weights_vec.into_iter().next().unwrap();
-        if self.weights.dimensions() != new_weights.dimensions() {
-            panic!("Weight dimensions for layer {} does not equals dimension of weights to set {}", self.weights.dimensions(), new_weights.dimensions());
-        }
-        self.weights = new_weights;
     }
 
     fn get_input_dimension(&self) -> usize {
@@ -86,6 +80,13 @@ impl FullyConnectedLayer {
         self.weights.apply_ref(|_| rng.gen_range(0.0..range));
         self.bias.apply_ref(|_| rng.gen_range(0.0..range));
     }
+
+    pub fn set_weights(&mut self, new_weights: Matrix<Ampl>) {
+        if self.weights.dimensions() != new_weights.dimensions() {
+            panic!("Weight dimensions for layer {} does not equals dimension of weights to set {}", self.weights.dimensions(), new_weights.dimensions());
+        }
+        self.weights = new_weights;
+    }
 }
 
 impl Display for FullyConnectedLayer
@@ -96,7 +97,7 @@ impl Display for FullyConnectedLayer
         write!(f, "bias\n")?;
         let bias_matrix = self.bias.as_matrix();
         imagedatasets::print_matrix(&bias_matrix);
-        // print_matrix3(&bias_matrix);
+        // print_matrix3(&bias_matrix);  // TODO
 
         std::fmt::Result::Ok(())
     }

@@ -3,10 +3,11 @@
 use std::any::Any;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
-use std::fs;
-use std::io::BufRead;
+use std::{fmt, fs};
+use std::io::{BufRead, Write};
 use std::io::Read;
-use std::io::Write;
+use std::io;
+use std::mem::{replace, swap};
 use std::ops::{Deref, Mul};
 use std::path::Path;
 use std::time::Instant;
@@ -17,9 +18,15 @@ use rayon::prelude::*;
 
 pub use convolutional::ConvolutionalLayer;
 pub use dense::FullyConnectedLayer;
+pub use pool::PoolLayer;
+pub use activation_function::ActivationFunction;
 
 use crate::matrix::{Matrix, MatrixT};
 use crate::vector::Vector;
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::de::{MapAccess, Visitor};
+use serde::ser::SerializeStruct;
+
 
 pub type Ampl = f64;
 
@@ -28,15 +35,16 @@ mod tests;
 
 mod convolutional;
 mod dense;
+mod activation_function;
+mod pool;
 
 /// Sample tuple, .0: input, .1: output
 pub struct Sample(pub Vector<Ampl>, pub Vector<Ampl>);
 
 /// Feed forward neural network layer.
+#[typetag::serde(tag = "type")]
 pub trait Layer : Display + Debug + Sync {
     fn get_weights(&self) -> Vec<&Matrix<Ampl>>;
-
-    fn set_weights(&mut self, new_weights: Vec<Matrix<Ampl>>);
 
     /// Dimension of input state vector.
     fn get_input_dimension(&self) -> usize;
@@ -63,47 +71,8 @@ pub trait Layer : Display + Debug + Sync {
     fn as_any(&self) -> &dyn Any;
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct ActivationFunction {
-    activation_function: fn(Ampl) -> Ampl,
-    activation_function_derived: fn(Ampl) -> Ampl,
-}
 
-impl ActivationFunction {
-    fn apply(&self, input: Ampl) -> Ampl {
-        (self.activation_function)(input)
-    }
-
-    fn apply_derived(&self, input: Ampl) -> Ampl {
-        (self.activation_function_derived)(input)
-    }
-
-}
-
-impl ActivationFunction {
-    pub fn sigmoid() -> Self {
-        ActivationFunction {
-            activation_function: sigmoid_logistic,
-            activation_function_derived: sigmoid_logistic_derived,
-        }
-    }
-
-    pub fn relu() -> Self {
-        ActivationFunction {
-            activation_function: relu,
-            activation_function_derived: relu_derived,
-        }
-    }
-
-    pub fn relu01() -> Self {
-        ActivationFunction {
-            activation_function: relu01,
-            activation_function_derived: relu01_derived,
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LayerContainer {
     layer: Box<dyn Layer>,
     activation_function: ActivationFunction,
@@ -116,7 +85,7 @@ impl LayerContainer {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Network
 {
     layers: Vec<LayerContainer>,
@@ -139,14 +108,14 @@ impl Network {
         self.layers.iter().map(|layer| layer.layer.get_weights()).collect()
     }
 
-    pub fn set_all_weights(&mut self, weights: Vec<Vec<Matrix<Ampl>>>) {
-        if self.layers.len() != weights.len() {
-            panic!("Number of layers {} does not equals weights length {}", self.layers.len(), weights.len());
-        }
-        for layer_weight in self.layers.iter_mut().zip(weights.into_iter()) {
-            layer_weight.0.layer.set_weights(layer_weight.1);
-        }
-    }
+    // pub fn set_all_weights(&mut self, weights: Vec<Vec<Matrix<Ampl>>>) {
+    //     if self.layers.len() != weights.len() {
+    //         panic!("Number of layers {} does not equals weights length {}", self.layers.len(), weights.len());
+    //     }
+    //     for layer_weight in self.layers.iter_mut().zip(weights.into_iter()) {
+    //         layer_weight.0.layer.set_weights(layer_weight.1);
+    //     }
+    // }
 }
 
 
@@ -494,7 +463,7 @@ fn get_err_sqr(network: &Network, sample: &Sample) -> Ampl {
 }
 
 pub fn write_network_to_file(network: &Network, filepath: impl AsRef<Path>) {
-    let json = serde_json::to_string_pretty( &network.get_all_weights()).expect("error serializing");
+    let json = serde_json::to_string_pretty( &network).expect("error serializing");
     let mut file = fs::File::create(&filepath).expect("error creating file");
     file.write_all(json.as_bytes()).expect("error writing");
     file.flush().unwrap();
@@ -505,40 +474,8 @@ pub fn read_network_from_file(network : &mut Network, filepath: impl AsRef<Path>
     let mut file = fs::File::open(filepath).expect("error opening file");
     let mut json = String::new();
     file.read_to_string(&mut json);
-    let weights : Vec<Vec<Matrix<Ampl>>> = serde_json::from_str(&json).expect("error parsing json");
-    network.set_all_weights(weights);
-}
-
-fn sigmoid_logistic(input: Ampl) -> Ampl {
-    sigmoid_logistic_raw(input)
-}
-
-fn sigmoid_logistic_raw(input: Ampl) -> f64 {
-    1. / (1. + (-input).exp())
-}
-
-fn sigmoid_logistic_derived(input: Ampl) -> Ampl {
-    sigmoid_logistic_derived_raw(input)
-}
-
-fn sigmoid_logistic_derived_raw(input: Ampl) -> f64 {
-    (-input).exp() / (1. + (-input).exp()).powf(2.)
-}
-
-fn relu(input: Ampl) -> Ampl {
-    if input >= 0.0 {input} else {0.0}
-}
-
-fn relu_derived(input: Ampl) -> Ampl {
-    if input >= 0.0 {1.0} else {0.0}
-}
-
-fn relu01(input: Ampl) -> Ampl {
-    if input >= 1.0 {1.0} else if input >= 0.0 {input} else {0.0}
-}
-
-fn relu01_derived(input: Ampl) -> Ampl {
-    if input >= 1.0 {0.0} else if input >= 0.0 {1.0} else {0.0}
+    let network_des: Network = serde_json::from_str(&json).expect("error parsing json");
+    replace(network, network_des);
 }
 
 

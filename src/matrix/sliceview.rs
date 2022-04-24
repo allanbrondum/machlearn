@@ -1,5 +1,6 @@
 use crate::matrix::{MatrixDimensions, MatrixElement, MatrixLinearIndex, MatrixT, StrideIter};
 
+/// Mutable matrix view of slice
 pub struct MutSliceView<'a, T: MatrixElement> {
     inner: &'a mut [T],
     linear_index: MatrixLinearIndex,
@@ -56,6 +57,7 @@ impl<'a, T: MatrixElement> MatrixT<'a, T> for MutSliceView<'a, T> {
 
 }
 
+/// Immutable matrix view of slice
 pub struct SliceView<'a, T: MatrixElement> {
     inner: &'a [T],
     linear_index: MatrixLinearIndex,

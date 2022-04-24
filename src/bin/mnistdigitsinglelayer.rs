@@ -17,18 +17,19 @@ fn main() {
 
     const NY: Ampl = 0.01;
 
-    let read_from_file = false;
+    let read_from_file = true;
     if !read_from_file {
         // learn weights
         network.set_random_weights_seed(0);
 
         println!("network:\n{}", network);
 
-        const LEARNING_SAMPLES: usize = 10_000;
+        const LEARNING_SAMPLES: usize = 1_000;
         neuralnetwork::run_learning_iterations(&mut network, mnistdigits::get_learning_samples().take(LEARNING_SAMPLES), NY, false, 1000);
     } else {
         // read weights from file
-        neuralnetwork::read_network_from_file(&mut network, "mnist_singlelayer_weights.json");
+        // neuralnetwork::read_network_from_file(&mut network, "mnist_singlelayer_weights.json");
+        neuralnetwork::read_network_from_file(&mut network, "mnist_tmp_weights.json");
         // println!("network \n{}", network);
     }
 

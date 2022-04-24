@@ -497,8 +497,16 @@ impl<T> Matrix<T>
         self.elements
     }
 
+    pub fn into_vector(self) -> Vector<T> {
+        Vector::from_vec(self.elements)
+    }
+
     pub fn as_slice(&self) -> &[T] {
         self.elements.as_slice()
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        self.elements.as_mut_slice()
     }
 }
 
@@ -574,6 +582,10 @@ impl MatrixLinearIndex {
 
     pub fn add_slice_offset(self, offset_delta: usize) -> MatrixLinearIndex {
         MatrixLinearIndex {offset: self.offset + offset_delta, ..self}
+    }
+
+    pub fn add_matrix_offset(self, matrix_count: usize) -> MatrixLinearIndex {
+        self.add_slice_offset(self.linear_dimension_length() * matrix_count)
     }
 
     pub fn add_row_col_offset(self, row_delta: usize, col_delta: usize) -> MatrixLinearIndex {
