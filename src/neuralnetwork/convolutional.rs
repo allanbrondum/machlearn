@@ -220,7 +220,7 @@ mod tests {
         let output = layer.evaluate_input_without_activation(&input);
         let output_indexing = layer.get_single_kernel_output_indexing();
         let output_matrix1 = SliceView::new(output_indexing, output.as_slice());
-        let output_matrix2 = SliceView::new(output_indexing.add_slice_offset(output_indexing.linear_dimension_length()), output.as_slice());
+        let output_matrix2 = SliceView::new(output_indexing.add_matrix_offset(1), output.as_slice());
 
         imagedatasets::print_matrix(&output_matrix1);
         imagedatasets::print_matrix(&output_matrix2);
@@ -259,14 +259,14 @@ mod tests {
         let mut input: Vector<Ampl> = Vector::new(input_indexing.required_linear_array_length());
         let mut input_matrix = MutSliceView::new(input_indexing, input.deref_mut());
         *input_matrix.elm_mut(2, 6) = 3.0;
-        *input_matrix.elm_mut(7, 5) = 3.0;
+        *input_matrix.elm_mut(7, 5) = 6.0;
 
         // delta output
         let output_indexing = layer.get_single_kernel_output_indexing();
         let mut delta_output= Vector::new(layer.get_output_dimension());
         let mut delta_output_matrix1 = MutSliceView::new(output_indexing, delta_output.as_mut_slice());
         *delta_output_matrix1.elm_mut(2, 5) = 0.5;
-        let mut delta_output_matrix2 = MutSliceView::new(output_indexing.add_slice_offset(output_indexing.linear_dimension_length()), delta_output.as_mut_slice());
+        let mut delta_output_matrix2 = MutSliceView::new(output_indexing.add_matrix_offset(1), delta_output.as_mut_slice());
         *delta_output_matrix2.elm_mut(6, 5) = 2.0;
 
         // back propagate
@@ -286,7 +286,7 @@ mod tests {
 
         // assert weight adjustments
         weights[0][(0, 1)] -= 3.0 * 0.5 * NY;
-        weights[1][(1, 0)] -= 3.0 * 2.0 * NY;
+        weights[1][(1, 0)] -= 6.0 * 2.0 * NY;
         let mut actual_weights: Vec<_> = layer.get_weights().into_iter().cloned().collect();
         println!("{}", actual_weights[0]);
         println!("{}", actual_weights[1]);
