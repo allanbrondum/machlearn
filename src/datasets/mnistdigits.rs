@@ -79,5 +79,5 @@ fn get_data_sets(label_file_path: &str, image_file_path: &str) -> impl Iterator<
 
 
 pub fn test_correct_percentage(network: &Network, test_samples: impl Iterator<Item=Sample> + Send, print: bool) -> f64 {
-    imagedatasets::test_correct_percentage(network, test_samples, &vec!(OUTPUT_INDEX), print)
+    imagedatasets::test_correct_percentage(network, test_samples, INPUT_INDEX, &vec!(OUTPUT_INDEX), print)
 }

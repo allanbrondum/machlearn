@@ -1001,3 +1001,11 @@ fn apply() {
     assert_eq!(-9, a[(1,0)]);
 }
 
+
+#[test]
+fn row_col_cell_count() {
+    let m = Matrix::<i32>::new(3, 2);
+    assert_eq!(3, m.row_count());
+    assert_eq!(2, m.column_count());
+    assert_eq!(2 * 3, m.cell_count());
+}

@@ -64,6 +64,10 @@ pub trait MatrixT<'a, T: MatrixElement> {
         self.dimensions().rows
     }
 
+    fn cell_count(&self) -> usize {
+        self.dimensions().cell_count()
+    }
+
     fn row_iter(&'a self, row: usize) -> Self::RowIter;
 
     fn col_iter(&'a self, col: usize) -> Self::ColIter;

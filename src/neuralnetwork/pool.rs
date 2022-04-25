@@ -17,14 +17,32 @@ pub struct PoolLayer
     input_matrix_index: MatrixLinearIndex,
     input_matrix_count: usize,
     window_dimension: MatrixDimensions,
+    pool_mode: PoolMode,
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub enum PoolMode
+{
+    Max,
+    Mean,
 }
 
 impl PoolLayer {
-    pub fn new(input_matrix_index: MatrixLinearIndex, input_matrix_count: usize, window_dimension: MatrixDimensions) -> PoolLayer {
+    pub fn new_max(input_matrix_index: MatrixLinearIndex, input_matrix_count: usize, window_dimension: MatrixDimensions) -> PoolLayer {
         PoolLayer {
             input_matrix_index,
             input_matrix_count,
             window_dimension,
+            pool_mode: PoolMode::Max
+        }
+    }
+
+    pub fn new_mean(input_matrix_index: MatrixLinearIndex, input_matrix_count: usize, window_dimension: MatrixDimensions) -> PoolLayer {
+        PoolLayer {
+            input_matrix_index,
+            input_matrix_count,
+            window_dimension,
+            pool_mode: PoolMode::Mean
         }
     }
 }
@@ -71,7 +89,12 @@ impl Layer for PoolLayer {
                     window_indexing,
                     input.as_slice());
 
-                *elm = input_window_matrix.iter().copied().max_by(cmp_ampl_ref).unwrap();
+                *elm = match self.pool_mode {
+                    PoolMode::Max =>
+                        input_window_matrix.iter().copied().max_by(cmp_ampl_ref).unwrap(),
+                    PoolMode::Mean =>
+                        input_window_matrix.iter().copied().sum::<Ampl>() / input_window_matrix.cell_count() as Ampl,
+                }
             }
         }
         output
@@ -90,9 +113,9 @@ impl Layer for PoolLayer {
                 delta_output.as_slice());
 
 
-            for (index, elm) in delta_output_matrix.iter_enum() {
+            for (output_index, gamma_output_elm) in delta_output_matrix.iter_enum() {
                 let window_indexing = input_matrix_indexing
-                    .add_row_col_offset(index.0 * self.window_dimension.rows, index.1 * self.window_dimension.columns)
+                    .add_row_col_offset(output_index.0 * self.window_dimension.rows, output_index.1 * self.window_dimension.columns)
                     .with_dimensions(self.window_dimension);
 
                 let input_window_matrix = SliceView::new(
@@ -102,12 +125,32 @@ impl Layer for PoolLayer {
                 let mut gamma_input_window_matrix = MutSliceView::new(
                     window_indexing,
                     gamma_input.as_mut_slice());
+                //
+                // let max = input_window_matrix.iter().copied()
+                //     .max_by(cmp_ampl_ref).unwrap();
+                // input_window_matrix.iter_enum()
+                //     .for_each(|(index, elm)| {
+                //         if *elm == max {
+                //             *gamma_input_window_matrix.elm_mut(index.0, index.1) = *gamma_output_elm;
+                //         }
+                //     });
 
-                let max_index = input_window_matrix.iter_enum()
-                    .max_by(|it1, it2| cmp_ampl(*it1.1, *it2.1))
-                    .unwrap().0;
+                match self.pool_mode {
+                    PoolMode::Max => {
+                        let max_index = input_window_matrix.iter_enum()
+                            .max_by(|it1, it2| cmp_ampl(*it1.1, *it2.1))
+                            .unwrap().0;
 
-                *gamma_input_window_matrix.elm_mut(max_index.0, max_index.1) = *elm;
+                        *gamma_input_window_matrix.elm_mut(max_index.0, max_index.1) = *gamma_output_elm;
+                    },
+                    PoolMode::Mean => {
+                        gamma_input_window_matrix.iter_mut_enum().for_each(|(index, elm)| {
+                            *elm = *gamma_output_elm / self.window_dimension.cell_count() as Ampl;
+                        });
+
+                    }
+                }
+
             }
         }
 
@@ -150,7 +193,7 @@ mod tests {
     #[test]
     fn input_output_dim() {
         let input_indexing = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows: 12, columns: 10});
-        let layer = PoolLayer::new(input_indexing, 3, MatrixDimensions{rows: 2, columns: 3});
+        let layer = PoolLayer::new_max(input_indexing, 3, MatrixDimensions{rows: 2, columns: 3});
 
         // input
         assert_eq!(3 * (12 * 10), layer.get_input_dimension());
@@ -165,7 +208,7 @@ mod tests {
     #[test]
     fn evaluate_input() {
         let input_indexing = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows: 12, columns: 10});
-        let mut layer = PoolLayer::new(input_indexing, 3, MatrixDimensions{rows: 2, columns: 3});
+        let mut layer = PoolLayer::new_max(input_indexing, 3, MatrixDimensions{rows: 2, columns: 3});
 
         // set input
         let mut input: Vector<Ampl> = Vector::new(layer.get_input_dimension());
@@ -198,7 +241,7 @@ mod tests {
     #[test]
     fn back_propagate() {
         let input_indexing = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows: 12, columns: 10});
-        let mut layer = PoolLayer::new(input_indexing, 3, MatrixDimensions{rows: 2, columns: 3});
+        let mut layer = PoolLayer::new_max(input_indexing, 3, MatrixDimensions{rows: 2, columns: 3});
 
         // set input
         let mut input: Vector<Ampl> = Vector::new(layer.get_input_dimension());
@@ -236,6 +279,104 @@ mod tests {
         let mut expected_gamma_input_matrix2 = Matrix::new_with_indexing(input_indexing);
         *expected_gamma_input_matrix2.elm_mut(0, 0) = 2.0;
         *expected_gamma_input_matrix2.elm_mut(3, 2) = 4.0;
+        assert_eq!(expected_gamma_input_matrix2, gamma_input_matrix2.copy_to_matrix());
+
+    }
+
+    #[test]
+    fn evaluate_input_mean() {
+        let input_indexing = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows: 12, columns: 10});
+        let mut layer = PoolLayer::new_mean(input_indexing, 3, MatrixDimensions{rows: 2, columns: 3});
+
+        // set input
+        let mut input: Vector<Ampl> = Vector::new(layer.get_input_dimension());
+        let mut input_matrix1 = MutSliceView::new(input_indexing, input.deref_mut());
+        *input_matrix1.elm_mut(1, 6) = 1.0;
+        *input_matrix1.elm_mut(2, 6) = 1.0;
+        *input_matrix1.elm_mut(3, 6) = 2.0;
+        let mut input_matrix2 = MutSliceView::new(input_indexing.add_slice_offset(input_indexing.linear_dimension_length()), input.deref_mut());
+        *input_matrix2.elm_mut(0, 0) = 0.5;
+        *input_matrix2.elm_mut(1, 0) = -1.5;
+
+        // calculate output
+        let output = layer.evaluate_input_without_activation(&input);
+        let output_indexing = layer.get_output_indexing();
+        let output_matrix1 = SliceView::new(output_indexing, output.as_slice());
+        let output_matrix2 = SliceView::new(output_indexing.add_slice_offset(output_indexing.linear_dimension_length()), output.as_slice());
+
+        imagedatasets::print_matrix(&output_matrix1);
+        imagedatasets::print_matrix(&output_matrix2);
+
+        let mut expected_output_matrix1 = Matrix::new_with_indexing(output_indexing);
+        expected_output_matrix1[(0, 2)] = 1.0 / 6.0;
+        expected_output_matrix1[(1, 2)] = (1.0 + 2.0) / 6.0;
+        assert_eq!(expected_output_matrix1, output_matrix1.copy_to_matrix());
+        let mut expected_output_matrix2 = Matrix::new_with_indexing(output_indexing);
+        expected_output_matrix2[(0, 0)] = -1.0 / 6.0;
+        assert_eq!(expected_output_matrix2, output_matrix2.copy_to_matrix());
+    }
+
+    #[test]
+    fn back_propagate_mean() {
+        let input_indexing = MatrixLinearIndex::new_row_stride(MatrixDimensions{rows: 12, columns: 10});
+        let mut layer = PoolLayer::new_mean(input_indexing, 3, MatrixDimensions{rows: 2, columns: 3});
+
+        // set input
+        let mut input: Vector<Ampl> = Vector::new(layer.get_input_dimension());
+        let mut input_matrix1 = MutSliceView::new(input_indexing, input.deref_mut());
+        *input_matrix1.elm_mut(1, 6) = 1.0;
+        *input_matrix1.elm_mut(2, 6) = 1.0;
+        *input_matrix1.elm_mut(3, 6) = 2.0;
+        let mut input_matrix2 = MutSliceView::new(input_indexing.add_matrix_offset(1), input.deref_mut());
+        *input_matrix2.elm_mut(0, 0) = 0.5;
+        *input_matrix2.elm_mut(1, 0) = -1.5;
+
+        // delta output
+        let mut delta_output = Vector::new(layer.get_output_dimension());
+        let delta_output_indexing = layer.get_output_indexing();
+        let mut delta_output_matrix1 = MutSliceView::new(delta_output_indexing, delta_output.as_mut_slice());
+        *delta_output_matrix1.elm_mut(0, 2) = 3.0;
+        *delta_output_matrix1.elm_mut(1, 2) = 2.5;
+        let mut delta_output_matrix2 = MutSliceView::new(delta_output_indexing.add_matrix_offset(1), delta_output.as_mut_slice());
+        *delta_output_matrix2.elm_mut(0, 0) = 2.0;
+        *delta_output_matrix2.elm_mut(1, 0) = 4.0;
+
+        // back propagate
+        const NY: f64 = 0.1;
+        let gamma_input = layer.back_propagate_without_activation(&input, delta_output, NY);
+        let gamma_input_matrix1 = SliceView::new(input_indexing, gamma_input.as_slice());
+        imagedatasets::print_matrix(&gamma_input_matrix1);
+        let gamma_input_matrix2 = SliceView::new(input_indexing.add_matrix_offset(1), gamma_input.as_slice());
+        imagedatasets::print_matrix(&gamma_input_matrix2);
+
+        // assert gamma input
+        let mut expected_gamma_input_matrix1 = Matrix::new_with_indexing(input_indexing);
+        *expected_gamma_input_matrix1.elm_mut(0, 6) = 3.0 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(1, 6) = 3.0 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(0, 7) = 3.0 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(1, 7) = 3.0 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(0, 8) = 3.0 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(1, 8) = 3.0 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(2, 6) = 2.5 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(3, 6) = 2.5 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(2, 7) = 2.5 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(3, 7) = 2.5 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(2, 8) = 2.5 / 6.0;
+        *expected_gamma_input_matrix1.elm_mut(3, 8) = 2.5 / 6.0;
+        assert_eq!(expected_gamma_input_matrix1, gamma_input_matrix1.copy_to_matrix());
+        let mut expected_gamma_input_matrix2 = Matrix::new_with_indexing(input_indexing);
+        *expected_gamma_input_matrix2.elm_mut(0, 0) = 2.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(1, 0) = 2.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(0, 1) = 2.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(1, 1) = 2.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(0, 2) = 2.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(1, 2) = 2.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(2, 0) = 4.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(3, 0) = 4.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(2, 1) = 4.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(3, 1) = 4.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(2, 2) = 4.0 / 6.0;
+        *expected_gamma_input_matrix2.elm_mut(3, 2) = 4.0 / 6.0;
         assert_eq!(expected_gamma_input_matrix2, gamma_input_matrix2.copy_to_matrix());
 
     }

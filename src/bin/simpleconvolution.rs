@@ -20,7 +20,7 @@ fn main() {
 
     network.set_random_weights_seed(1);
 
-    const LEARNING_SAMPLES: usize = 1000;
+    const LEARNING_SAMPLES: usize = 10000;
     neuralnetwork::run_learning_iterations(&mut network, convolutiontest::get_learning_samples(SYMBOLS).take(LEARNING_SAMPLES), NY, false, 100);
 
     if false {
@@ -31,7 +31,7 @@ fn main() {
     // let errsqr = neuralnetwork::run_test_iterations(&network, test_samples);
     let errsqr = neuralnetwork::run_test_iterations_parallel(&network, convolutiontest::get_test_samples(SYMBOLS).take(TEST_SAMPLES).par_bridge());
 
-    if false {
+    if true {
         convolutiontest::test_correct_percentage(SYMBOLS, &network, convolutiontest::get_test_samples(SYMBOLS).take(10), true);
     }
     let pct_correct = convolutiontest::test_correct_percentage(SYMBOLS, &network, convolutiontest::get_test_samples(SYMBOLS).take(TEST_SAMPLES), false);

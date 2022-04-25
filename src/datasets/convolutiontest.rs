@@ -20,7 +20,11 @@ pub const OUTPUT_INDEX: MatrixLinearIndex = MatrixLinearIndex::new_row_stride(Ma
 
 const CROSS_PATTERN: &[(i32, i32)] = &[(0,0), (1,1), (2,2), (-1,-1), (-2,-2), (-1,1), (-2,2), (1,-1), (2,-2)];
 const SQUARE_PATTERN: &[(i32, i32)] = &[(0,2), (1,2), (2,2), (2,1), (2,0), (2,-1), (2,-2), (1,-2), (0,-2), (-1,-2), (-2,-2), (-2,-1), (-2,0), (-2,1), (-2,2), (-1,2)];
-const SYMBOLS: &[&[(i32, i32)]] = &[CROSS_PATTERN, SQUARE_PATTERN];
+const VERTICAL_PATTERN: &[(i32, i32)] = &[(0,0), (1,0), (2,0), (-1,0), (-2,0)];
+const HORIZONTAL_PATTERN: &[(i32, i32)] = &[(0,-2), (0,-1), (0,0), (0,1), (0,2)];
+const CROSS_UP_PATTERN: &[(i32, i32)] = &[(-2,-2), (-1,-1), (0,0), (1,1), (2,2)];
+const CROSS_DOWN_PATTERN: &[(i32, i32)] = &[(2,-2), (1,-1), (0,0), (-1,1), (-2,2)];
+const SYMBOLS: &[&[(i32, i32)]] = &[CROSS_UP_PATTERN, CROSS_DOWN_PATTERN];
 
 pub fn get_learning_samples(symbols: usize) -> impl Iterator<Item=Sample> {
     let mut rng: Pcg64 = Seeder::from(0).make_rng();
@@ -78,14 +82,14 @@ pub fn print_data_examples(symbols: usize) {
 
     println!("Learning samples");
     let mut learning_data = get_learning_samples(symbols);
-    print_samples(symbols, &mut learning_data.by_ref().take(SAMPLE_SIZE));
+    print_samples(symbols, learning_data.by_ref().take(SAMPLE_SIZE));
 
     println!("Test samples");
     let mut test_data = get_test_samples(symbols);
-    print_samples(symbols, &mut test_data.by_ref().take(SAMPLE_SIZE));
+    print_samples(symbols, test_data.by_ref().take(SAMPLE_SIZE));
 }
 
-fn print_samples(symbols: usize, label_bytes: &mut impl Iterator<Item=Sample>) {
+fn print_samples(symbols: usize, label_bytes: impl Iterator<Item=Sample>) {
     let output_indexes = get_output_indexings(symbols);
     imagedatasets::print_samples(label_bytes, INPUT_INDEX, &output_indexes);
 }
@@ -100,6 +104,6 @@ fn get_output_indexings(symbols: usize) -> Vec<MatrixLinearIndex> {
 
 pub fn test_correct_percentage(symbols: usize, network: &Network, test_samples: impl Iterator<Item=Sample> + Send, print: bool) -> f64 {
     let output_indexes = get_output_indexings(symbols);
-    imagedatasets::test_correct_percentage(network, test_samples, &output_indexes, print)
+    imagedatasets::test_correct_percentage(network, test_samples,  INPUT_INDEX,&output_indexes, print)
 
 }

@@ -162,7 +162,7 @@ impl Network {
             let layer_index = layer_count - 1 - index;
             gamma = layer.back_propagate(input, gamma, ny_with_factor, sampler.layers_samples.get_mut(layer_index).unwrap());
 
-            ny_with_factor *= (gamma.len() as Ampl).sqrt(); // try to give higher adjustment to lower layers to counter vanishing gradients
+            ny_with_factor *= ((layer.layer.get_input_dimension() / layer.layer.get_output_dimension()) as Ampl).sqrt(); // try to give higher adjustment to lower layers to counter vanishing gradients
         }
     }
 }
@@ -174,7 +174,9 @@ impl LayerContainer {
         if input.len() != self.layer.get_input_dimension() {
             panic!("Input state length {} not equals to weights column count {}", input.len(), self.layer.get_input_dimension());
         }
-        self.layer.evaluate_input_without_activation(input).apply(self.activation_function.activation_function)
+        let state_no_activation = self.layer.evaluate_input_without_activation(input);
+        let a = 0;
+        state_no_activation.apply(self.activation_function.activation_function)
     }
 
     /// Use highest gradient back propagation to adjust weights moderated by the factor `ny`.
@@ -258,8 +260,9 @@ struct MinMaxSum {
 }
 
 impl Display for MinMaxSum {
+
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:>7.3}/{:>7.3}/{:>7.3}", self.min.unwrap(), self.sum / self.count as Ampl, self.max.unwrap())
+        write!(f, "{:>7.3}/{:>7.3}/{:>7.3}", self.min.unwrap_or(Ampl::NAN), self.sum / self.count as Ampl, self.max.unwrap_or(Ampl::NAN))
     }
 }
 
